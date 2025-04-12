@@ -2,7 +2,8 @@ name: Publish Python Package
 
 on:
   push:
-    branches: ["main"]
+    tags:
+      - 'v*'
 
 permissions:
   contents: read
@@ -25,6 +26,19 @@ jobs:
         python-version: '3.10'
     - name: Install the project
       run: uv sync --all-extras --dev
+    - name: Verify tag matches package version
+      run: |
+        # Extract version from tag (remove 'v' prefix)
+        TAG_VERSION=${GITHUB_REF#refs/tags/v}
+        # Extract version from pyproject.toml
+        PACKAGE_VERSION=$(grep -oP '(?<=version = ")[^"]+' pyproject.toml)
+        echo "Tag version: $TAG_VERSION"
+        echo "Package version: $PACKAGE_VERSION"
+        # Check if versions match
+        if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
+          echo "Error: Tag version ($TAG_VERSION) does not match package version ($PACKAGE_VERSION)"
+          exit 1
+        fi
     - name: Build package
       run: uv build
     - name: Publish package
