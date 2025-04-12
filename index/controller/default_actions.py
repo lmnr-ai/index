@@ -52,9 +52,8 @@ def register_default_actions(controller, output_model=None):
     async def go_to_url(url: str, browser: Browser):
         """Navigate to URL in the current tab"""
         page = await browser.get_current_page()
-        # large timeout for remote browsers
-        await page.goto(url)
-        await asyncio.sleep(2)
+        await page.goto(url, wait_until='domcontentloaded')
+        await asyncio.sleep(1.5)
         msg = f"Navigated to {url}"
         logger.info(msg)
         return ActionResult(content=msg)
