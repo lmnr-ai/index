@@ -16,7 +16,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from index.browser.models import InteractiveElement
+from lmnr_index.browser.models import InteractiveElement
 
 logger = logging.getLogger(__name__)
 

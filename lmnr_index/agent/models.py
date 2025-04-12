@@ -5,7 +5,7 @@ from typing import Any, Dict, Literal, Optional
 from playwright.async_api import StorageState
 from pydantic import BaseModel
 
-from index.llm.llm import Message, ThinkingBlock
+from lmnr_index.llm.llm import Message, ThinkingBlock
 
 
 class AgentState(BaseModel):

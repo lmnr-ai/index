@@ -8,9 +8,9 @@ from typing import Any, Callable, Dict, List, Optional, Type, get_type_hints
 from lmnr import Laminar
 from pydantic import BaseModel
 
-from index.agent.models import ActionModel, ActionResult
-from index.browser.browser import Browser
-from index.controller.default_actions import register_default_actions
+from lmnr_index.agent.models import ActionModel, ActionResult
+from lmnr_index.browser.browser import Browser
+from lmnr_index.controller.default_actions import register_default_actions
 
 logger = logging.getLogger(__name__)
 

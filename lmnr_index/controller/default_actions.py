@@ -6,8 +6,8 @@ import re
 
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from index.agent.models import ActionResult
-from index.browser.browser import Browser
+from lmnr_index.agent.models import ActionResult
+from lmnr_index.browser.browser import Browser
 
 logger = logging.getLogger(__name__)
 

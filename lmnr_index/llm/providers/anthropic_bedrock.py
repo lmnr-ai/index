@@ -6,9 +6,10 @@ import backoff
 from anthropic import AsyncAnthropicBedrock
 from dotenv import load_dotenv
 
+from lmnr_index.llm.llm import BaseLLMProvider, LLMResponse, Message
+
 load_dotenv()
 
-from ..llm import BaseLLMProvider, LLMResponse, Message
 
 logger = logging.getLogger(__name__)
 

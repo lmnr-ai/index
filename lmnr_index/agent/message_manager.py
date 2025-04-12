@@ -4,12 +4,12 @@ import logging
 from datetime import datetime
 from typing import List, Optional
 
-from index.agent.models import ActionResult, AgentLLMOutput
-from index.agent.prompts import system_message
-from index.agent.utils import load_demo_image_as_b64
-from index.browser.models import BrowserState
-from index.browser.utils import scale_b64_image
-from index.llm.llm import ImageContent, Message, TextContent
+from lmnr_index.agent.models import ActionResult, AgentLLMOutput
+from lmnr_index.agent.prompts import system_message
+from lmnr_index.agent.utils import load_demo_image_as_b64
+from lmnr_index.browser.models import BrowserState
+from lmnr_index.browser.utils import scale_b64_image
+from lmnr_index.llm.llm import ImageContent, Message, TextContent
 
 logger = logging.getLogger(__name__)
 

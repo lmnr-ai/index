@@ -2,7 +2,7 @@ import base64
 import importlib.resources
 import logging
 
-from index.browser.utils import scale_b64_image
+from lmnr_index.browser.utils import scale_b64_image
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ def load_demo_image_as_b64(image_name: str) -> str:
     """
     try:
         # Using importlib.resources to reliably find package data
-        with importlib.resources.path('index.agent.demo_images', image_name) as img_path:
+        with importlib.resources.path('lmnr_index.agent.demo_images', image_name) as img_path:
             with open(img_path, 'rb') as img_file:
                 b64 = base64.b64encode(img_file.read()).decode('utf-8')
                 return scale_b64_image(b64, 0.85)

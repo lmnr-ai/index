@@ -2,12 +2,12 @@ from typing import List, Optional
 
 from openai import AsyncOpenAI
 
-from ..llm import BaseLLMProvider, LLMResponse, Message
+from lmnr_index.llm.llm import BaseLLMProvider, LLMResponse, Message
 
 
 class OpenAIProvider(BaseLLMProvider):
-    def __init__(self, model: str, system_message: Optional[str] = None):
-        super().__init__(model=model, system_message=system_message)
+    def __init__(self, model: str):
+        super().__init__(model=model)
         self.client = AsyncOpenAI()
 
     async def call(

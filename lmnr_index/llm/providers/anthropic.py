@@ -7,8 +7,8 @@ from tenacity import (
     wait_exponential,
 )
 
-from ..llm import BaseLLMProvider, LLMResponse, Message, ThinkingBlock
-from ..providers.anthropic_bedrock import AnthropicBedrockProvider
+from lmnr_index.llm.llm import BaseLLMProvider, LLMResponse, Message, ThinkingBlock
+from lmnr_index.llm.providers.anthropic_bedrock import AnthropicBedrockProvider
 
 logger = logging.getLogger(__name__)
 

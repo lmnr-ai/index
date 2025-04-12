@@ -6,7 +6,7 @@ from typing import Dict, List
 
 from PIL import Image, ImageDraw, ImageFont
 
-from index.browser.models import InteractiveElement
+from lmnr_index.browser.models import InteractiveElement
 
 logger = logging.getLogger(__name__)
 

@@ -29,21 +29,21 @@ from tenacity import (
 )
 
 # Import detector class
-from index.browser.detector import Detector
-from index.browser.models import (
+from lmnr_index.browser.detector import Detector
+from lmnr_index.browser.models import (
 	BrowserError,
 	BrowserState,
 	InteractiveElementsData,
 	TabInfo,
 )
-from index.browser.utils import (
+from lmnr_index.browser.utils import (
 	combine_and_filter_elements,
 	put_highlight_elements_on_screenshot,
 )
 
 logger = logging.getLogger(__name__)
 
-INTERACTIVE_ELEMENTS_JS_CODE = resources.read_text('index.browser', 'findVisibleInteractiveElements.js')
+INTERACTIVE_ELEMENTS_JS_CODE = resources.read_text('lmnr_index.browser', 'findVisibleInteractiveElements.js')
 
 class ViewportSize(TypedDict):
 	width: int

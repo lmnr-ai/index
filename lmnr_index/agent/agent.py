@@ -11,8 +11,8 @@ from dotenv import load_dotenv
 from lmnr import Laminar, LaminarSpanContext, observe, use_span
 from pydantic import ValidationError
 
-from index.agent.message_manager import MessageManager
-from index.agent.models import (
+from lmnr_index.agent.message_manager import MessageManager
+from lmnr_index.agent.models import (
 	ActionResult,
 	AgentLLMOutput,
 	AgentOutput,
@@ -25,9 +25,9 @@ from index.agent.models import (
 	TimeoutChunk,
 	TimeoutChunkContent,
 )
-from index.browser.browser import Browser, BrowserConfig
-from index.controller.controller import Controller
-from index.llm.llm import BaseLLMProvider, Message
+from lmnr_index.browser.browser import Browser, BrowserConfig
+from lmnr_index.controller.controller import Controller
+from lmnr_index.llm.llm import BaseLLMProvider, Message
 
 load_dotenv()
 logger = logging.getLogger(__name__)
