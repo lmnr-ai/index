@@ -52,9 +52,8 @@ def register_default_actions(controller, output_model=None):
     async def go_to_url(url: str, browser: Browser):
         """Navigate to URL in the current tab"""
         page = await browser.get_current_page()
-        # large timeout for remote browsers
-        await page.goto(url)
-        await asyncio.sleep(2)
+        await page.goto(url, wait_until='domcontentloaded')
+        await asyncio.sleep(1.5)
         msg = f"Navigated to {url}"
         logger.info(msg)
         return ActionResult(content=msg)
@@ -98,9 +97,7 @@ def register_default_actions(controller, output_model=None):
         await page.mouse.click(state.viewport.width / 2, state.viewport.height / 2)
         await asyncio.sleep(0.05)
 
-        await page.mouse.move(column_element.center.x, row_element.center.y)
-        await asyncio.sleep(0.05)
-        await page.mouse.click(column_element.center.x, row_element.center.y)
+        await page.mouse.click(column_element.center.x, row_element.center.y, click_count=2)
         await asyncio.sleep(0.05)
 
         return ActionResult(content=f'Clicked on spreadsheet cell with row {row} and column {column}')
@@ -134,8 +131,6 @@ def register_default_actions(controller, output_model=None):
         try:
             page = await browser.get_current_page()
 
-            await page.mouse.move(element.center.x, element.center.y)
-            await asyncio.sleep(0.1)
             await page.mouse.click(element.center.x, element.center.y)
 
             msg = f'Clicked element with index {index}: <{element.tag_name}></{element.tag_name}>'

@@ -1,9 +1,14 @@
+<a href="https://www.ycombinator.com/companies/laminar-ai">![Static Badge](https://img.shields.io/badge/Y%20Combinator-S24-orange)</a>
+<a href="https://x.com/lmnrai">![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/lmnrai)</a>
+<a href="https://discord.gg/nNFUUDAKub"> ![Static Badge](https://img.shields.io/badge/Join_Discord-464646?&logo=discord&logoColor=5865F2) </a>
+
 # Index
 
 Index is a state-of-the-art open-source browser agent that autonomously executes complex tasks on the web.
 
 - [x] It is powered by Claude 3.7 Sonnet with extented thinking. More models will be supported in the future.
 - [x] Index is also available as a [hosted API.](https://docs.lmnr.ai/laminar-index/introduction)
+- [x] You can also try out Index via [hosted UI](https://docs.lmnr.ai/laminar-index/introduction#hosted-ui) or fully [self-host the UI](https://x.com/skull8888888888/status/1910763169489764374).
 - [x] Supports advanced [browser agent observability](https://docs.lmnr.ai/laminar-index/observability) powered by [Laminar](https://lmnr.ai).
 
 prompt: go to ycombinator.com. summarize first 3 companies in the W25 batch and make new spreadsheet in google sheets.
