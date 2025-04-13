@@ -20,11 +20,11 @@ dependencies = [
     "backoff>=2.2.1",
     "lmnr[anthropic]>=0.5.0",
     "openai>=1.65.2",
-    "playwright>=1.50.0",
     "tenacity>=9.0.0",
     "pillow>=11.1.0",
     "aiobotocore>=2.21.1",
     "aioboto3>=14.1.0",
+    "rebrowser-playwright>=1.49.1",
 ]
 
 [tool.uv]
