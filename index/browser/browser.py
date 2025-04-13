@@ -136,9 +136,21 @@ class Browser:
 		if self.playwright_browser is None:
 			if self.config.cdp_url:
 				logger.info(f'Connecting to remote browser via CDP {self.config.cdp_url}')
-				self.playwright_browser = await self.playwright.chromium.connect_over_cdp(
-					self.config.cdp_url
-				)
+				attempts = 0
+				while True:
+					try:
+						self.playwright_browser = await self.playwright.chromium.connect_over_cdp(
+							self.config.cdp_url,
+							timeout=2500,
+						)
+						break
+					except Exception as e:
+						logger.error(f'Failed to connect to remote browser via CDP {self.config.cdp_url}: {e}. Retrying...')
+						await asyncio.sleep(1)
+						attempts += 1
+						if attempts > 3:
+							raise e
+				logger.info(f'Connected to remote browser via CDP {self.config.cdp_url}')
 			else:
 				logger.info('Launching new browser instance')
 				self.playwright_browser = await self.playwright.chromium.launch(
