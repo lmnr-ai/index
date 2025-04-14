@@ -119,7 +119,12 @@ class Agent:
 			# if we couldn't find the <output> tags, it most likely means the <output> tags are not present in the response
 			json_str = response.content.replace("<output>", "").replace("</output>", "").strip()
 		else:
-			json_str = match.group(1).replace("<output>", "").replace("</output>", "").strip()
+			# Extract just the content between the tags without any additional replacement
+			json_str = match.group(1).strip()
+			
+			# Ensure any trailing closing tags are removed (additional safety check)
+			closing_tag_pattern = r"</output(?:[^>]*)>$"
+			json_str = re.sub(closing_tag_pattern, "", json_str).strip()
 				
 		try:
 			# First try to parse it directly to catch any obvious JSON issues
@@ -276,7 +281,8 @@ class Agent:
 		else:
 			trace_id = None
 		
-		await self._setup_messages(prompt, agent_state)
+		with use_span(span):
+			await self._setup_messages(prompt, agent_state)
 
 		step = prev_step if prev_step is not None else 0
 		result = prev_action_result
