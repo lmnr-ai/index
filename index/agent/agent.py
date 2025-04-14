@@ -116,16 +116,14 @@ class Agent:
 		json_str = ""
 
 		if not match:
-			# if we couldn't find the <output> tags, it most likely means the <output> tags are not present in the response
-			json_str = response.content.replace("<output>", "").replace("</output>", "").strip()
+			# if we couldn't find the <output> tags, it most likely means the <output*> tag is not present in the response
+			# remove closing tag just in case
+			closing_tag_pattern = r"</output(?:[^>]*)>$"
+			json_str = re.sub(closing_tag_pattern, "", response.content).strip()
 		else:
 			# Extract just the content between the tags without any additional replacement
 			json_str = match.group(1).strip()
 			
-			# Ensure any trailing closing tags are removed (additional safety check)
-			closing_tag_pattern = r"</output(?:[^>]*)>$"
-			json_str = re.sub(closing_tag_pattern, "", json_str).strip()
-				
 		try:
 			# First try to parse it directly to catch any obvious JSON issues
 			try:
