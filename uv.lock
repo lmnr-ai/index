@@ -494,12 +494,11 @@ anthropic = [
 
 [[package]]
 name = "lmnr-index"
-version = "0.1.4"
+version = "0.1.5"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic", extra = ["bedrock"] },
     { name = "backoff" },
-    { name = "httpx" },
     { name = "lmnr", extra = ["anthropic"] },
     { name = "openai" },
     { name = "pillow" },
@@ -516,7 +515,6 @@ dev = [
 requires-dist = [
     { name = "anthropic", extras = ["bedrock"], specifier = ">=0.49.0" },
     { name = "backoff", specifier = ">=2.2.1" },
-    { name = "httpx", specifier = ">=0.28.1" },
     { name = "lmnr", extras = ["anthropic"], specifier = ">=0.5.0" },
     { name = "openai", specifier = ">=1.65.2" },
     { name = "pillow", specifier = ">=11.1.0" },
