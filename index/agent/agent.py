@@ -338,36 +338,40 @@ class Agent:
 
 				if is_done:
 					logger.info(f'✅ Task completed successfully in {step} steps')
+					
+					storage_state = await self.browser.get_storage_state()
+
+					# Yield the final output as a chunk
+					final_output = AgentOutput(
+						agent_state=self.get_state(),
+						result=result,
+						storage_state=storage_state,
+						step_count=step,
+						trace_id=trace_id,
+					)
+
+					yield FinalOutputChunk(content=final_output)
+
 					break
 
 			if not is_done:
 				logger.info('❌ Maximum number of steps reached')
 				yield StepChunkError(content=f'Maximum number of steps reached: {max_steps}')
-
-
+			
 		except Exception as e:
 			logger.info(f'❌ Error in run: {e}')
 			if span is not None:
 				span.record_exception(e)
+			
+			yield StepChunkError(content=f'Error in run stream: {e}')
 		finally:
 			# Clean up resources
 			try:
-				storage_state = await self.browser.get_storage_state()
-
+			
 				if close_context:
 					# Update to close the browser directly
 					await self.browser.close()
 
-				# Yield the final output as a chunk
-				final_output = AgentOutput(
-					agent_state=self.get_state(),
-					result=result,
-					storage_state=storage_state,
-					step_count=step,
-					trace_id=trace_id,
-				)
-
-				yield FinalOutputChunk(content=final_output)
 			finally:
 				if span is not None:
 					span.end()
