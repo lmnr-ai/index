@@ -37,7 +37,7 @@ from index.browser.models import (
 	TabInfo,
 )
 from index.browser.utils import (
-	combine_and_filter_elements,
+	filter_elements,
 	put_highlight_elements_on_screenshot,
 )
 
@@ -64,18 +64,14 @@ class BrowserConfig:
 		storage_state: Optional[StorageState] = None
 			Storage state to set
 			
-		cv_model_endpoint: Optional[str] = None
-			SageMaker endpoint for CV model, set to None to disable CV detection
-
-		sheets_model_endpoint: Optional[str] = None
-			SageMaker endpoint for sheets model, set to None to disable sheets detection
+		detector: Optional[Detector] = None
+			Detector instance for CV element detection. If None, CV detection is disabled.
 
 	"""
 	cdp_url: Optional[str] = None
 	viewport_size: ViewportSize = field(default_factory=lambda: {"width": 1200, "height": 900})
 	storage_state: Optional[StorageState] = None
-	cv_model_endpoint: Optional[str] = None
-	sheets_model_endpoint: Optional[str] = None
+	detector: Optional[Detector] = None
 
 class Browser:
 	"""
@@ -97,14 +93,10 @@ class Browser:
 		self._cdp_session = None
 		
 		# CV detection-related attributes
-		self.detector: Optional[Detector] = None
+		self.detector: Optional[Detector] = config.detector
 		
 		# Initialize state
 		self._init_state()
-		
-		# Set up CV detection if endpoints are provided
-		if self.config.cv_model_endpoint:
-			self.setup_cv_detector(self.config.cv_model_endpoint, self.config.sheets_model_endpoint)
 
 	async def __aenter__(self):
 		"""Async context manager entry"""
@@ -202,26 +194,6 @@ class Browser:
 
 		self._cdp_session = await self.context.new_cdp_session(page)
 		self.current_page = page
-
-	def setup_cv_detector(self, cv_endpoint_name: Optional[str] = None, sheets_endpoint_name: Optional[str] = None) -> None:
-		"""
-		Set up the CV detector with the browser
-		
-		Args:
-			cv_endpoint_name: Optional SageMaker endpoint name for CV model. If None, uses default.
-			sheets_endpoint_name: Optional SageMaker endpoint name for sheets model. If None, uses default.
-		"""
-		if cv_endpoint_name is None and self.config.cv_model_endpoint is None:
-			logger.debug("No CV model endpoint provided, skipping CV detector setup")
-			return
-			
-		# Use provided endpoint or fall back to config
-		cv_endpoint = cv_endpoint_name or self.config.cv_model_endpoint
-		sheets_endpoint = sheets_endpoint_name or self.config.sheets_model_endpoint
-
-		self.detector = Detector(cv_endpoint_name=cv_endpoint, sheets_endpoint_name=sheets_endpoint)
-		
-		return self.detector
 
 	async def _apply_anti_detection_scripts(self):
 		"""Apply scripts to avoid detection as automation"""
@@ -404,11 +376,7 @@ class Browser:
 
 			screenshot_b64 = await self.fast_screenshot()
 			
-			# Use CV detection if available, otherwise use standard browser detection
-			if self.detector is not None:
-				interactive_elements_data = await self.get_interactive_elements_with_cv(screenshot_b64, detect_sheets)
-			else:
-				interactive_elements_data = await self.get_interactive_elements_data()
+			interactive_elements_data = await self.get_interactive_elements(screenshot_b64, detect_sheets)
 			
 			interactive_elements = {element.index: element for element in interactive_elements_data.elements}
 			
@@ -439,17 +407,17 @@ class Browser:
 				return self._state
 			raise
 	
-	@observe(name='browser.get_interactive_elements')
-	async def get_interactive_elements_data(self) -> InteractiveElementsData:
+	@observe(name='browser.detect_browser_elements')
+	async def detect_browser_elements(self) -> InteractiveElementsData:
 		"""Get all interactive elements on the page"""
 		page = await self.get_current_page()	
 		result = await page.evaluate(INTERACTIVE_ELEMENTS_JS_CODE)
 		interactive_elements_data = InteractiveElementsData(**result)
 
 		return interactive_elements_data
-	
-	@observe(name='browser.get_interactive_elements_with_cv')
-	async def get_interactive_elements_with_cv(self, screenshot_b64: Optional[str] = None, detect_sheets: bool = False) -> InteractiveElementsData:
+
+	@observe(name='browser.get_interactive_elements', ignore_output=True)
+	async def get_interactive_elements(self, screenshot_b64: str, detect_sheets: bool = False) -> InteractiveElementsData:
 		"""
 		Get interactive elements using combined browser and CV detection.
 		
@@ -459,30 +427,28 @@ class Browser:
 		Returns:
 			Combined detection results
 		"""
-		if self.detector is None:
-			logger.warning("CV detector not set up. Falling back to browser-only detection.")
-			return await self.get_interactive_elements_data()
-		
-		# Take screenshot if not provided
-		if screenshot_b64 is None:
-			screenshot_b64 = await self.fast_screenshot()
-		
-		# Get browser-based detections
-		browser_elements_data, cv_elements = await asyncio.gather(
-			self.get_interactive_elements_data(),
-			self.detector.detect_from_image(screenshot_b64, detect_sheets)
-		)
-		
-		# Combine and filter detections
-		combined_elements = combine_and_filter_elements(
-			browser_elements_data.elements, 
-			cv_elements,
-		)
+	
+		elements = []
+
+		if self.detector is not None:
+			browser_elements_data_task = asyncio.create_task(self.detect_browser_elements())
+			cv_elements_task = asyncio.create_task(self.detector.detect_from_image(screenshot_b64, detect_sheets))
+
+			browser_elements_data, cv_elements = await asyncio.gather(
+				browser_elements_data_task,
+				cv_elements_task
+			)
+
+			# Combine and filter detections
+			elements = filter_elements(browser_elements_data.elements + cv_elements)
+		else:
+			browser_elements_data = await self.detect_browser_elements()
+			elements = browser_elements_data.elements
 		
 		# Create new InteractiveElementsData with combined elements
 		return InteractiveElementsData(
 			viewport=browser_elements_data.viewport,
-			elements=combined_elements
+			elements=elements
 		)
 
 	async def get_cdp_session(self):
