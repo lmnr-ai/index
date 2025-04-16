@@ -53,8 +53,8 @@ class AnthropicProvider(BaseLLMProvider):
         # Make a copy of messages to prevent modifying the original list during retries
         messages_copy = messages.copy()
         
-        if len(messages_copy) == 0 or messages_copy[0].role == "system":
-            raise ValueError("System message is required for Anthropic")
+        if len(messages_copy) < 2 or messages_copy[0].role != "system":
+            raise ValueError("System message is required for Anthropic and length of messages must be at least 2")
 
         system_message = messages_copy[0]
 

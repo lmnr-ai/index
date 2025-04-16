@@ -40,8 +40,8 @@ class AnthropicBedrockProvider(BaseLLMProvider):
     
         messages_copy = messages.copy()
 
-        if len(messages_copy) == 0 or messages_copy[0].role == "system":
-            raise ValueError("System message is required for Anthropic Bedrock")
+        if len(messages_copy) < 2 or messages_copy[0].role != "system":
+            raise ValueError("System message is required for Anthropic Bedrock and length of messages must be at least 2")
             
         system_message = messages_copy[0]
 
