@@ -53,11 +53,10 @@ class AnthropicProvider(BaseLLMProvider):
         # Make a copy of messages to prevent modifying the original list during retries
         messages_copy = messages.copy()
         
-        system_message = None
-        if len(messages_copy) > 0 and messages_copy[0].role == "system":
-            system_message = messages_copy[0]
-            # Filter out the system message instead of using pop
-            messages_copy = messages_copy[1:]
+        if len(messages_copy) == 0 or messages_copy[0].role == "system":
+            raise ValueError("System message is required for Anthropic")
+
+        system_message = messages_copy[0]
 
         if self.enable_thinking:
 
@@ -65,7 +64,7 @@ class AnthropicProvider(BaseLLMProvider):
                 response = await self.client.messages.create(
                     model=self.model,
                     system=system_message.to_anthropic_format()["content"],
-                    messages=[msg.to_anthropic_format() for msg in messages_copy],
+                    messages=[msg.to_anthropic_format() for msg in messages_copy[1:]],
                     temperature=1,
                     thinking={
                         "type": "enabled",
@@ -75,7 +74,7 @@ class AnthropicProvider(BaseLLMProvider):
                     **kwargs
                 )
             except Exception as e:
-                logger.warning(f"Error calling Anthropic: {str(e)}")
+                logger.error(f"Error calling Anthropic: {str(e)}")
                 response = await self.anthropic_bedrock.call(
                     messages_copy,
                     **kwargs
@@ -90,7 +89,7 @@ class AnthropicProvider(BaseLLMProvider):
         else:
             response = await self.client.messages.create(
                 model=self.model,
-                messages=[msg.to_anthropic_format() for msg in messages_copy],
+                messages=[msg.to_anthropic_format() for msg in messages_copy[1:]],
                 temperature=temperature,
                 max_tokens=max_tokens,
                 system=system_message.to_anthropic_format()["content"],

@@ -39,79 +39,49 @@ class AnthropicBedrockProvider(BaseLLMProvider):
     ) -> LLMResponse:
     
         messages_copy = messages.copy()
-        
-        system_message = None
-        if len(messages_copy) > 0 and messages_copy[0].role == "system":
-            system_message = messages_copy[0]
-            # Filter out the system message instead of using pop
-            messages_copy = messages_copy[1:]
-            # always cache control the system message
-            system_message.cache_control = True
+
+        if len(messages_copy) == 0 or messages_copy[0].role == "system":
+            raise ValueError("System message is required for Anthropic Bedrock")
+            
+        system_message = messages_copy[0]
 
         try:
             if self.enable_thinking:
-
-                if system_message:
                     
-                    response = await self.client.messages.create(
-                        model=self.model,
-                        system=system_message.to_anthropic_format(enable_cache_control=False)["content"],
-                        messages=[msg.to_anthropic_format(enable_cache_control=False) for msg in messages_copy],
-                        temperature=1,
-                        thinking={
-                            "type": "enabled",
-                            "budget_tokens": self.thinking_token_budget,
-                        },
-                        max_tokens=max(self.thinking_token_budget + 1, max_tokens),
-                        **kwargs
-                    )
-                else:
-                    response = await self.client.messages.create(
-                        model=self.model,
-                        messages=[msg.to_anthropic_format(enable_cache_control=False) for msg in messages_copy],
-                        temperature=1,
-                        thinking={
-                            "type": "enabled",
-                            "budget_tokens": self.thinking_token_budget,
-                        },
-                        max_tokens=max(self.thinking_token_budget + 1, max_tokens),
-                        **kwargs
-                    )
-
-                logger.info(f"Thinking: {response.content[0].thinking}")
-
-                logger.info(f"Response: {response.usage}")
-
+                response = await self.client.messages.create(
+                    model=self.model,
+                    system=system_message.to_anthropic_format(enable_cache_control=False)["content"],
+                    messages=[msg.to_anthropic_format(enable_cache_control=False) for msg in messages_copy[1:]],
+                    temperature=1,
+                    thinking={
+                        "type": "enabled",
+                        "budget_tokens": self.thinking_token_budget,
+                    },
+                    max_tokens=max(self.thinking_token_budget + 1, max_tokens),
+                    **kwargs
+                )
+               
                 return LLMResponse(
                     content=response.content[1].text,
                     raw_response=response,
                     usage=response.usage
                 )
             else:
-                max_tokens = 2048
 
-                if system_message:
-                    response = await self.client.messages.create(
-                        model=self.model,
-                        messages=[msg.to_anthropic_format(enable_cache_control=False) for msg in messages_copy],
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        system=system_message.to_anthropic_format(enable_cache_control=False)["content"],
-                        **kwargs
-                    )
-                else:
-                    response = await self.client.messages.create(
-                        model=self.model,
-                        messages=[msg.to_anthropic_format(enable_cache_control=False) for msg in messages_copy],
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        **kwargs)
+                response = await self.client.messages.create(
+                    model=self.model,
+                    messages=[msg.to_anthropic_format(enable_cache_control=False) for msg in messages_copy[1:]],
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    system=system_message.to_anthropic_format(enable_cache_control=False)["content"],
+                    **kwargs
+                )
+              
                 return LLMResponse(
                     content=response.content[0].text,
                     raw_response=response,
                     usage=response.usage
                 )
         except Exception as e:
-            logger.warning(f"Error calling Anthropic: {str(e)}")
-            # re-raise the exception to trigger backoff retry
+            logger.error(f"Error calling Anthropic Bedrock: {str(e)}")
             raise e
