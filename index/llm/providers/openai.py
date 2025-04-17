@@ -7,8 +7,16 @@ from ..llm import BaseLLMProvider, LLMResponse, Message
 
 class OpenAIProvider(BaseLLMProvider):
     def __init__(self, model: str, system_message: Optional[str] = None):
-        super().__init__(model=model, system_message=system_message)
+        super().__init__(model=model)
+        self.system_message = system_message
         self.client = AsyncOpenAI()
+        
+    def _prepare_messages(self, messages: List[Message]) -> List[Message]:
+        """Prepare message list, add system message to the beginning if available"""
+        if self.system_message and not any(msg.role == "system" for msg in messages):
+            system_message = Message(role="system", content=self.system_message)
+            return [system_message] + messages
+        return messages
 
     async def call(
         self,
