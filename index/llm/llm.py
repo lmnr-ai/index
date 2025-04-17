@@ -154,6 +154,7 @@ class LLMModel(Enum):
     GPT35 = "gpt-3.5-turbo"
     CLAUDE3_OPUS = "claude-3-opus-20240229"
     CLAUDE3_SONNET = "claude-3-sonnet-20240229"
+    QWEN25_VL_72B = "qwen2.5-vl-72b-instruct"
     # Add more models as needed
 
 class LLMResponse(BaseModel):
