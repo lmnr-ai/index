@@ -3,25 +3,11 @@ from typing import List, Optional
 
 import backoff
 from anthropic import AsyncAnthropic
-from tenacity import (
-    wait_exponential,
-)
 
 from ..llm import BaseLLMProvider, LLMResponse, Message, ThinkingBlock
 from ..providers.anthropic_bedrock import AnthropicBedrockProvider
 
 logger = logging.getLogger(__name__)
-
-
-# Custom wait strategy to use recommended retry time from error response when available
-def anthropic_wait_strategy(retry_state):
-    exception = retry_state.outcome.exception()
-    if exception and hasattr(exception, "retry_after"):
-        recommended_wait = exception.retry_after
-        logger.info(f"Using recommended retry delay: {recommended_wait} seconds")
-        return recommended_wait
-    # Fall back to exponential backoff
-    return wait_exponential(multiplier=2, min=10, max=120)(retry_state)
 
 
 class AnthropicProvider(BaseLLMProvider):
