@@ -120,6 +120,10 @@ class Agent:
 			# remove closing tag just in case
 			closing_tag_pattern = r"</output(?:[^>]*)>$"
 			json_str = re.sub(closing_tag_pattern, "", response.content).strip()
+
+			open_tag_pattern = r"<output(?:[^>]*)>$"
+			json_str = re.sub(open_tag_pattern, "", json_str).strip()
+
 		else:
 			# Extract just the content between the tags without any additional replacement
 			json_str = match.group(1).strip()
@@ -218,6 +222,7 @@ class Agent:
 
 			except Exception as e:
 				logger.info(f'❌ Error in run: {e}')
+				raise e
 			finally:
 				storage_state = await self.browser.get_storage_state()
 
