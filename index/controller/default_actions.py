@@ -64,8 +64,8 @@ def register_default_actions(controller, output_model=None):
         try:
             page = await browser.get_current_page()            
             await page.go_back(wait_until='domcontentloaded')
-            # Wait for the page to stabilize
-            await asyncio.sleep(1)
+
+            await asyncio.sleep(2)
             msg = 'Navigated back to the previous page'
             logger.info(msg)
             return ActionResult(content=msg)
