@@ -10,7 +10,7 @@ packages = ["index"]
 
 [project]
 name = "lmnr-index"
-version = "0.1.4"
+version = "0.1.5"
 description = "Index - SOTA browser AI agent for autonomous task execution on the web"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -23,8 +23,6 @@ dependencies = [
     "playwright>=1.50.0",
     "tenacity>=9.0.0",
     "pillow>=11.1.0",
-    "aiobotocore>=2.21.1",
-    "aioboto3>=14.1.0",
 ]
 
 [tool.uv]

@@ -3,25 +3,11 @@ from typing import List, Optional
 
 import backoff
 from anthropic import AsyncAnthropic
-from tenacity import (
-    wait_exponential,
-)
 
 from ..llm import BaseLLMProvider, LLMResponse, Message, ThinkingBlock
 from ..providers.anthropic_bedrock import AnthropicBedrockProvider
 
 logger = logging.getLogger(__name__)
-
-
-# Custom wait strategy to use recommended retry time from error response when available
-def anthropic_wait_strategy(retry_state):
-    exception = retry_state.outcome.exception()
-    if exception and hasattr(exception, "retry_after"):
-        recommended_wait = exception.retry_after
-        logger.info(f"Using recommended retry delay: {recommended_wait} seconds")
-        return recommended_wait
-    # Fall back to exponential backoff
-    return wait_exponential(multiplier=2, min=10, max=120)(retry_state)
 
 
 class AnthropicProvider(BaseLLMProvider):
@@ -53,11 +39,10 @@ class AnthropicProvider(BaseLLMProvider):
         # Make a copy of messages to prevent modifying the original list during retries
         messages_copy = messages.copy()
         
-        system_message = None
-        if len(messages_copy) > 0 and messages_copy[0].role == "system":
-            system_message = messages_copy[0]
-            # Filter out the system message instead of using pop
-            messages_copy = messages_copy[1:]
+        if len(messages_copy) < 2 or messages_copy[0].role != "system":
+            raise ValueError("System message is required for Anthropic and length of messages must be at least 2")
+
+        system_message = messages_copy[0]
 
         if self.enable_thinking:
 
@@ -65,7 +50,7 @@ class AnthropicProvider(BaseLLMProvider):
                 response = await self.client.messages.create(
                     model=self.model,
                     system=system_message.to_anthropic_format()["content"],
-                    messages=[msg.to_anthropic_format() for msg in messages_copy],
+                    messages=[msg.to_anthropic_format() for msg in messages_copy[1:]],
                     temperature=1,
                     thinking={
                         "type": "enabled",
@@ -75,7 +60,7 @@ class AnthropicProvider(BaseLLMProvider):
                     **kwargs
                 )
             except Exception as e:
-                logger.warning(f"Error calling Anthropic: {str(e)}")
+                logger.error(f"Error calling Anthropic: {str(e)}")
                 response = await self.anthropic_bedrock.call(
                     messages_copy,
                     **kwargs
@@ -90,7 +75,7 @@ class AnthropicProvider(BaseLLMProvider):
         else:
             response = await self.client.messages.create(
                 model=self.model,
-                messages=[msg.to_anthropic_format() for msg in messages_copy],
+                messages=[msg.to_anthropic_format() for msg in messages_copy[1:]],
                 temperature=temperature,
                 max_tokens=max_tokens,
                 system=system_message.to_anthropic_format()["content"],

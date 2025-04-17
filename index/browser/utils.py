@@ -343,27 +343,22 @@ def sort_elements_by_position(elements: List[InteractiveElement]) -> List[Intera
     return elements
 
 
-def combine_and_filter_elements(
-    browser_elements: List[InteractiveElement], 
-    cv_elements: List[InteractiveElement],
+def filter_elements(
+    elements: List[InteractiveElement],
     iou_threshold: float = 0.7
 ) -> List[InteractiveElement]:
     """
-    Combine browser elements and CV elements and filter duplicates.
+    Combine interactive elements from multiple detection methods and filter duplicates.
     
     Args:
-        browser_elements: Browser detection elements
-        cv_elements: CV detection elements
+        elements: Interactive elements from multiple detection methods
         iou_threshold: Threshold for considering elements as overlapping
         
     Returns:
         Combined and filtered elements
     """
-    # Combine elements
-    all_elements = list(browser_elements) + cv_elements
-    
-    # Filter overlapping elements
-    filtered = filter_overlapping_elements(all_elements, iou_threshold)
+    #Filter overlapping elements
+    filtered = filter_overlapping_elements(elements, iou_threshold)
     
     # Sort elements by position
     sorted_elements = sort_elements_by_position(filtered)
