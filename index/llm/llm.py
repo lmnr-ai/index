@@ -61,23 +61,30 @@ class Message:
         """Convert to OpenAI message format"""
         message = {"role": self.role}
         
-        # Handle different content types
-        if len(self.content) == 1 and isinstance(self.content[0], TextContent):
-            message["content"] = self.content[0].text
-        else:
-            message["content"] = [
-                {
-                    "type": content.type,
-                    **({"text": content.text} if isinstance(content, TextContent) else {"image_url": content.image_url})
-                }
-                for content in self.content
-            ]
+        if isinstance(self.content, str):
+            message["content"] = self.content
             
-        if self.name:
-            message["name"] = self.name
-        if self.tool_call_id:
-            message["tool_call_id"] = self.tool_call_id
-            
+        elif isinstance(self.content, list):
+
+            content_blocks = []
+
+            for content_block in self.content:
+
+                block = {}
+                
+                if isinstance(content_block, TextContent):
+                    block["type"] = "text"
+                    block["text"] = content_block.text
+                elif isinstance(content_block, ImageContent):
+                    block["type"] = "image_url"
+                    block["image_url"] = {
+                        "url": "data:image/png;base64," + content_block.image_b64
+                    }
+
+                content_blocks.append(block)
+
+            message["content"] = content_blocks
+
         return message
 
     def to_anthropic_format(self, enable_cache_control: bool = True) -> Dict:
