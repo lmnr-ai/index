@@ -17,19 +17,19 @@ class OpenAIProvider(BaseLLMProvider):
         temperature: float = 1.0,
     ) -> LLMResponse:
 
-        args = {}
-
+        args = {
+            "temperature": temperature,
+        }
+    
         if self.model.startswith("o") and self.reasoning_effort:
             args["reasoning_effort"] = self.reasoning_effort
+            args["temperature"] = 1
 
         response = await self.client.chat.completions.create(
             model=self.model,
             messages=[msg.to_openai_format() for msg in messages],
-            temperature=temperature,
             **args
         )
-
-        print(response.usage)
         
         return LLMResponse(
             content=response.choices[0].message.content,
