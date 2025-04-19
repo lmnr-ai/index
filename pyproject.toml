@@ -18,12 +18,18 @@ requires-python = ">=3.10"
 dependencies = [
     "anthropic[bedrock]>=0.49.0",
     "backoff>=2.2.1",
-    "lmnr[anthropic]>=0.5.0",
+    "lmnr[anthropic,openai]>=0.5.1",
     "openai>=1.65.2",
     "playwright>=1.50.0",
     "tenacity>=9.0.0",
     "pillow>=11.1.0",
+    "rich>=13.5.0",
+    "textual>=0.50.1",
+    "typer>=0.9.0",
 ]
+
+[project.scripts]
+index = "index.cli:main"
 
 [tool.uv]
 dev-dependencies = [

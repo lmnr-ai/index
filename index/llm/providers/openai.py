@@ -6,24 +6,29 @@ from ..llm import BaseLLMProvider, LLMResponse, Message
 
 
 class OpenAIProvider(BaseLLMProvider):
-    def __init__(self, model: str, system_message: Optional[str] = None):
-        super().__init__(model=model, system_message=system_message)
+    def __init__(self, model: str, reasoning_effort: Optional[str] = "low"):
+        super().__init__(model=model)
         self.client = AsyncOpenAI()
+        self.reasoning_effort = reasoning_effort
 
     async def call(
         self,
         messages: List[Message],
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        temperature: float = 1.0,
     ) -> LLMResponse:
-        messages = self._prepare_messages(messages)
+
+        args = {
+            "temperature": temperature,
+        }
+    
+        if self.model.startswith("o") and self.reasoning_effort:
+            args["reasoning_effort"] = self.reasoning_effort
+            args["temperature"] = 1
+
         response = await self.client.chat.completions.create(
             model=self.model,
             messages=[msg.to_openai_format() for msg in messages],
-            temperature=temperature,
-            max_tokens=max_tokens,
-            **kwargs
+            **args
         )
         
         return LLMResponse(
