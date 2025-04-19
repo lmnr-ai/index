@@ -8,6 +8,7 @@ import typer
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
+from rich.prompt import Prompt
 from textual.app import App
 from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
@@ -18,12 +19,12 @@ from index.agent.models import AgentOutput, AgentState
 from index.browser.browser import BrowserConfig
 from index.llm.llm import BaseLLMProvider
 from index.llm.providers.anthropic import AnthropicProvider
+from index.llm.providers.openai import OpenAIProvider
 
 # Create Typer app
 app = typer.Typer(help="Index - Browser AI agent CLI")
 
 # Configuration constants
-AGENT_STATE_FILE = "agent_state.json"
 BROWSER_STATE_FILE = "browser_state.json"
 
 console = Console()
@@ -32,14 +33,14 @@ class AgentSession:
     """Manages an agent session with state persistence"""
     
     def __init__(self, llm: Optional[BaseLLMProvider] = None):
-        self.llm = llm or AnthropicProvider(model="claude-3-7-sonnet-20250219", enable_thinking=True, thinking_token_budget=2048)
-
+        self.llm = llm
+        
         browser_config = None
 
         if os.path.exists(BROWSER_STATE_FILE):
             with open(BROWSER_STATE_FILE, "r") as f:
                 self.storage_state = json.load(f)
-                console.print("[green]Loaded existing agent state[/green]")
+                console.print("[green]Loaded existing browser state[/green]")
 
                 browser_config = BrowserConfig(
                     storage_state=self.storage_state
@@ -56,8 +57,6 @@ class AgentSession:
         
     def save_state(self, agent_output: AgentOutput):
         """Save agent state to file"""
-        with open(AGENT_STATE_FILE, "w") as f:
-            f.write(agent_output.agent_state.model_dump_json())
         
         if agent_output.storage_state:
             with open(BROWSER_STATE_FILE, "w") as f:
@@ -70,11 +69,6 @@ class AgentSession:
         self.is_running = True
         
         try:
-            # Initialize browser with storage state if available
-            if self.storage_state:
-                await self.agent.browser.context.add_cookies(self.storage_state["cookies"])
-                await self.agent.browser.context.add_storage_state(self.storage_state)
-            
             # Run the agent
             if self.agent_state:
                 result = await self.agent.run(
@@ -101,7 +95,6 @@ class AgentSession:
         self.is_running = True
         
         try:
-            
             # Run the agent with streaming
             if self.agent_state:
                 stream = self.agent.run_stream(
@@ -134,8 +127,6 @@ class AgentSession:
 
     def reset(self):
         """Reset agent state"""
-        if os.path.exists(AGENT_STATE_FILE):
-            os.remove(AGENT_STATE_FILE)
         if os.path.exists(BROWSER_STATE_FILE):
             os.remove(BROWSER_STATE_FILE)
         self.agent_state = None
@@ -378,10 +369,25 @@ def run_ui(prompt: str = typer.Option(None, "--prompt", "-p", help="Initial prom
     agent_ui.run()
 
 
+def create_llm_provider(model_choice: str) -> BaseLLMProvider:
+    """Create an LLM provider based on model choice"""
+    if model_choice.startswith("o"):
+        # OpenAI model
+        console.print(f"[cyan]Using OpenAI model: {model_choice}[/]")
+        return OpenAIProvider(model=model_choice, reasoning_effort="low")
+    else:
+        # Anthropic model by default
+        console.print(f"[cyan]Using Anthropic model: {model_choice}[/]")
+        return AnthropicProvider(
+            model=model_choice,
+            enable_thinking=True,
+            thinking_token_budget=2048
+        )
+
+
 async def _interactive_loop(initial_prompt: str = None):
     """Implementation of the interactive loop mode"""
-    session = AgentSession()
-    
+    # Display welcome panel
     console.print(Panel.fit(
         "Index Browser Agent Interactive Mode\n"
         "Type your message and press Enter. The agent will respond.\n"
@@ -390,12 +396,39 @@ async def _interactive_loop(initial_prompt: str = None):
         border_style="blue"
     ))
     
+    # Model selection menu
+    console.print("\n[bold green]Choose an LLM model:[/]")
+    console.print("1. [bold]Claude 3.7 Sonnet[/] (default)")
+    console.print("2. [bold]OpenAI o4-mini[/]")
+    
+    choice = Prompt.ask(
+        "[bold]Select model[/]",
+        choices=["1", "2"],
+        default="1"
+    )
+    
+    # Create LLM provider based on selection
+    model_name = "claude-3-7-sonnet-20250219" if choice == "1" else "o4-mini"
+    llm_provider = create_llm_provider(model_name)
+    
+    # Create agent session with selected provider
+    session = AgentSession(llm=llm_provider)
+    
     try:
         first_message = True
+        awaiting_human_input = False
         
         while True:
-            # Get user input (or use initial prompt for first message)
-            if first_message and initial_prompt:
+            # Check if we're waiting for the user to return control to the agent
+            if awaiting_human_input:
+                console.print("\n[yellow]Agent is waiting for control to be returned.[/]")
+                console.print("[yellow]Press Enter to return control to the agent...[/]", end="")
+                input()  # Wait for Enter key
+                user_message = "Returning control back, continue your task"
+                console.print(f"\n[bold blue]Your message:[/] {user_message}")
+                awaiting_human_input = False
+            # Normal message input flow
+            elif first_message and initial_prompt:
                 user_message = initial_prompt
                 console.print(f"\n[bold blue]Your message:[/] {user_message}")
                 first_message = False
@@ -426,7 +459,7 @@ async def _interactive_loop(initial_prompt: str = None):
                         console.print(f"[bold {step_color}]Step {step_num}:[/] {summary}")
                         
                         # Display additional info for special actions as separate lines
-                        if action_result and action_result.is_done:
+                        if action_result and action_result.is_done and not action_result.give_control:
                             console.print("  [green bold]✓ Task completed successfully![/]")
                         
                         if action_result and action_result.give_control:
@@ -459,24 +492,15 @@ async def _interactive_loop(initial_prompt: str = None):
             # After agent completes
             if human_control_requested:
                 console.print("\n[yellow]Agent has requested human control.[/]")
+                awaiting_human_input = True
             else:
                 console.print("\n[green]Agent has completed the task.[/]")
-            
-            console.print("[dim]Waiting for your next message...[/]")
+                console.print("[dim]Waiting for your next message...[/]")
             
     except KeyboardInterrupt:
         console.print("\n[yellow]Exiting interactive mode...[/]")
         # Close the browser before exiting
         await session.agent.browser.close()
-
-
-@app.command()
-def reset():
-    """
-    Reset the agent state
-    """
-    session = AgentSession()
-    session.reset()
 
 
 def main():
