@@ -7,7 +7,7 @@
 Index is the SOTA open-source browser agent for autonomously executing complex tasks on the web.
 
 - [x] Powered by reasoning LLMs with vision capabilities.
-    - [x] Claude 3.7 Sonnet with extented thinking (top performing model)
+    - [x] Claude 3.7 Sonnet with extended thinking (top performing model)
     - [x] OpenAI o4-mini
     - [ ] Gemini models (upcoming)
 - [x] `pip install lmnr-index` and use it in your project
@@ -64,8 +64,8 @@ playwright install chromium
 ### Run the agent with CLI
 
 You can run Index via interactive CLI. It features:
-- Browser state persistance between sessions
-- Follow-up messages with support for "give control human control" action
+- Browser state persistence between sessions
+- Follow-up messages with support for "give human control" action
 - Real-time streaming updates
 - Beautiful terminal UI using Textual
 
