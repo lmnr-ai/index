@@ -69,6 +69,7 @@ You can run Index via interactive CLI. It features:
 - Real-time streaming updates
 - Beautiful terminal UI using Textual
 
+You can run the agent with the following command. Remember to set API key for the selected model in the `.env` file.
 ```bash
 index run
 ```
