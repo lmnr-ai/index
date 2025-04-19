@@ -1,0 +1,5 @@
+typer>=0.9.0
+rich>=13.5.0
+textual>=0.50.1
+python-dotenv>=1.0.0
+asyncio>=3.4.3 
