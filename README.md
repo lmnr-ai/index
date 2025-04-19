@@ -104,7 +104,7 @@ Step 5: Provided concise summary of the three pricing tiers
 ### Run the agent with code
 ```python
 import asyncio
-from lmnr_index import Agent, AnthropicProvider
+from index import Agent, AnthropicProvider
 
 async def main():
 
@@ -153,7 +153,7 @@ Then you will get full observability on the agent's actions synced with the brow
 ### Run with remote CDP url
 ```python
 import asyncio
-from lmnr_index import Agent, AnthropicProvider, Browser, BrowserConfig
+from index import Agent, AnthropicProvider, BrowserConfig
 
 async def main():
     # Configure browser to connect to an existing Chrome DevTools Protocol endpoint
@@ -178,7 +178,7 @@ if __name__ == "__main__":
 ### Customize browser window size
 ```python
 import asyncio
-from lmnr_index import Agent, AnthropicProvider, Browser, BrowserConfig
+from index import Agent, AnthropicProvider, BrowserConfig
 
 async def main():
     # Configure browser with custom viewport size
