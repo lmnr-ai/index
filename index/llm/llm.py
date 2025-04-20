@@ -127,6 +127,33 @@ class Message:
                      
         return message
     
+    def to_gemini_format(self) -> Dict:
+        """Convert to Gemini message format"""
+        parts = []
+        
+        if isinstance(self.content, str):
+            parts = [{"text": self.content}]
+        elif isinstance(self.content, list):
+            for content_block in self.content:
+                if isinstance(content_block, TextContent):
+                    parts.append({"text": content_block.text})
+                elif isinstance(content_block, ImageContent):
+                    if content_block.image_b64:
+                        parts.append({"inline_data": {
+                            "mime_type": "image/png",
+                            "data": content_block.image_b64
+                        }})
+                    elif content_block.image_url:
+                        parts.append({"file_data": {
+                            "mime_type": "image/png",
+                            "file_uri": content_block.image_url
+                        }})
+        
+        return {
+            "role": 'model' if self.role == 'assistant' else 'user',
+            "parts": parts
+        }
+    
     def remove_cache_control(self):
         if isinstance(self.content, list):
             for content_block in self.content:
@@ -150,18 +177,6 @@ class Message:
 
         return any(content.cache_control for content in self.content)
 
-
-class LLMProvider(Enum):
-    OPENAI = "openai"
-    ANTHROPIC = "anthropic"
-    # Add more providers as needed
-
-class LLMModel(Enum):
-    GPT4 = "gpt-4"
-    GPT35 = "gpt-3.5-turbo"
-    CLAUDE3_OPUS = "claude-3-opus-20240229"
-    CLAUDE3_SONNET = "claude-3-sonnet-20240229"
-    # Add more models as needed
 
 class LLMResponse(BaseModel):
     content: str

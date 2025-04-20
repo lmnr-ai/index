@@ -26,6 +26,7 @@ dependencies = [
     "rich>=13.5.0",
     "textual>=0.50.1",
     "typer>=0.9.0",
+    "google-genai>=1.11.0",
 ]
 
 [project.scripts]
