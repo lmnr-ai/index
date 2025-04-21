@@ -9,7 +9,7 @@ Index is the SOTA open-source browser agent for autonomously executing complex t
 - [x] Powered by reasoning LLMs with vision capabilities.
     - [x] Claude 3.7 Sonnet with extended thinking (top performing model)
     - [x] OpenAI o4-mini
-    - [ ] Gemini models (upcoming)
+    - [x] Gemini 2.5 Flash
 - [x] `pip install lmnr-index` and use it in your project
 - [x] `index run` to run the agent in the interactive CLI
 - [x] Index is also available as a [serverless API.](https://docs.lmnr.ai/laminar-index/introduction)
@@ -60,6 +60,16 @@ pip install lmnr-index
 # Install playwright
 playwright install chromium
 ```
+
+### Setup model API keys
+
+Setup your model API keys in `.env` file in your project root:
+```
+ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
+OPENAI_API_KEY=
+```
+
 
 ### Run the agent with CLI
 

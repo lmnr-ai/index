@@ -5,6 +5,7 @@ import os
 from typing import Dict, List, Optional
 
 import typer
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -19,7 +20,10 @@ from index.agent.models import AgentOutput, AgentState
 from index.browser.browser import BrowserConfig
 from index.llm.llm import BaseLLMProvider
 from index.llm.providers.anthropic import AnthropicProvider
+from index.llm.providers.gemini import GeminiProvider
 from index.llm.providers.openai import OpenAIProvider
+
+load_dotenv()
 
 # Create Typer app
 app = typer.Typer(help="Index - Browser AI agent CLI")
@@ -369,20 +373,29 @@ def run_ui(prompt: str = typer.Option(None, "--prompt", "-p", help="Initial prom
     agent_ui.run()
 
 
-def create_llm_provider(model_choice: str) -> BaseLLMProvider:
+def create_llm_provider(provider: str, model: str) -> BaseLLMProvider:
     """Create an LLM provider based on model choice"""
-    if model_choice.startswith("o"):
+    if provider == "openai":
         # OpenAI model
-        console.print(f"[cyan]Using OpenAI model: {model_choice}[/]")
-        return OpenAIProvider(model=model_choice, reasoning_effort="low")
-    else:
-        # Anthropic model by default
-        console.print(f"[cyan]Using Anthropic model: {model_choice}[/]")
+        console.print(f"[cyan]Using OpenAI model: {model}[/]")
+        return OpenAIProvider(model=model, reasoning_effort="low")
+    elif provider == "gemini":
+        # Gemini model
+        console.print(f"[cyan]Using Gemini model: {model}[/]")
+        return GeminiProvider(
+            model=model,
+            thinking_tokens_budget=2048
+        )
+    elif provider == "anthropic":
+        # Anthropic model
+        console.print(f"[cyan]Using Anthropic model: {model}[/]")
         return AnthropicProvider(
-            model=model_choice,
+            model=model,
             enable_thinking=True,
             thinking_token_budget=2048
         )
+    else:
+        raise ValueError(f"Unsupported provider: {provider}")
 
 
 async def _interactive_loop(initial_prompt: str = None):
@@ -399,17 +412,32 @@ async def _interactive_loop(initial_prompt: str = None):
     # Model selection menu
     console.print("\n[bold green]Choose an LLM model:[/]")
     console.print("1. [bold]Claude 3.7 Sonnet[/] (default)")
-    console.print("2. [bold]OpenAI o4-mini[/]")
+    console.print("2. [bold]Gemini 2.5 Flash[/]")
+    console.print("3. [bold]OpenAI o4-mini[/]")
     
     choice = Prompt.ask(
         "[bold]Select model[/]",
-        choices=["1", "2"],
+        choices=["1", "2", "3"],
         default="1"
     )
     
+    provider = ""
+    model = ""
+    
     # Create LLM provider based on selection
-    model_name = "claude-3-7-sonnet-20250219" if choice == "1" else "o4-mini"
-    llm_provider = create_llm_provider(model_name)
+    if choice == "1":
+        provider = "anthropic"
+        model = "claude-3-7-sonnet-20250219"
+    elif choice == "2":
+        provider = "gemini"
+        model = "gemini-2.5-flash-preview-04-17"
+    elif choice == "3":
+        provider = "openai"
+        model = "o4-mini"
+    else:
+        raise ValueError(f"Invalid choice: {choice}")
+    
+    llm_provider = create_llm_provider(provider, model)
     
     # Create agent session with selected provider
     session = AgentSession(llm=llm_provider)
@@ -452,11 +480,8 @@ async def _interactive_loop(initial_prompt: str = None):
                         action_result = chunk.content.action_result
                         summary = chunk.content.summary
                         
-                        # Use alternating colors for consecutive steps to make them visually distinct
-                        step_color = "cyan" if step_num % 2 == 0 else "blue"
-                        
                         # Simple single-line output for steps
-                        console.print(f"[bold {step_color}]Step {step_num}:[/] {summary}")
+                        console.print(f"[bold blue]Step {step_num}:[/] {summary}")
                         
                         # Display additional info for special actions as separate lines
                         if action_result and action_result.is_done and not action_result.give_control:

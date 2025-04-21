@@ -134,8 +134,10 @@ class Agent:
 				json.loads(json_str)
 			except json.JSONDecodeError:
 				# If direct parsing fails, attempt to fix common issues
-				# Remove any escape characters that might cause problems
+				# Remove escape characters and control characters (0x00-0x1F) that might cause problems
 				json_str = json_str.replace('\\n', '\n').replace('\\r', '\r').replace('\\t', '\t')
+				# Clean all control characters (0x00-0x1F) except valid JSON whitespace (\n, \r, \t)
+				json_str = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', json_str)
 				
 			output = AgentLLMOutput.model_validate_json(json_str.strip())
 			
