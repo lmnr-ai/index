@@ -361,7 +361,12 @@ def run_ui(prompt: str = typer.Option(None, "--prompt", "-p", help="Initial prom
     """
     Launch the graphical UI for the Index browser agent
     """
+    # Select model and check API key
+    llm_provider = select_model_and_check_key()
+    
+    # Initialize UI with the selected LLM provider
     agent_ui = AgentUI()
+    agent_ui.agent_session = AgentSession(llm=llm_provider)
     
     if prompt:
         # If a prompt is provided, we'll send it once the UI is ready
@@ -386,7 +391,7 @@ def create_llm_provider(provider: str, model: str) -> BaseLLMProvider:
         console.print(f"[cyan]Using Gemini model: {model}[/]")
         return GeminiProvider(
             model=model,
-            thinking_tokens_budget=10000
+            thinking_tokens_budget=8192
         )
     elif provider == "anthropic":
         # Anthropic model
@@ -400,18 +405,39 @@ def create_llm_provider(provider: str, model: str) -> BaseLLMProvider:
         raise ValueError(f"Unsupported provider: {provider}")
 
 
-async def _interactive_loop(initial_prompt: str = None):
-    """Implementation of the interactive loop mode"""
-    # Display welcome panel
-    console.print(Panel.fit(
-        "Index Browser Agent Interactive Mode\n"
-        "Type your message and press Enter. The agent will respond.\n"
-        "Press Ctrl+C to exit.",
-        title="Interactive Mode",
-        border_style="blue"
-    ))
-    
-    # Model selection menu
+def check_and_save_api_key(required_key: str):
+    """Check if API key exists, prompt for it if missing, and save to .env file"""
+    if not os.environ.get(required_key):
+        console.print(f"\n[yellow]API key {required_key} not found in environment.[/]")
+        api_key = Prompt.ask(f"Enter your {required_key}", password=True)
+        
+        # Save to .env file
+        env_path = ".env"
+        
+        if os.path.exists(env_path):
+            # Read existing content
+            with open(env_path, "r") as f:
+                env_content = f.read()
+            env_content += f"\n{required_key}={api_key}"
+            
+            with open(env_path, "w") as f:
+                f.write(env_content)
+            console.print(f"[green]Saved {required_key} to .env file[/]")
+        else:
+            # Create new .env file
+            with open(env_path, "w") as f:
+                f.write(f"{required_key}={api_key}")
+            console.print("[green]Created .env file[/]")
+
+        # Update environment variable for current session
+        os.environ[required_key] = api_key
+        
+        # Reload dotenv to ensure changes are applied
+        load_dotenv(override=True)
+        
+
+def select_model_and_check_key():
+    """Select a model and check for required API key"""
     console.print("\n[bold green]Choose an LLM model:[/]")
     console.print("1. [bold]Claude 3.7 Sonnet[/] (default)")
     console.print("2. [bold]Gemini 2.5 Flash[/]")
@@ -425,21 +451,43 @@ async def _interactive_loop(initial_prompt: str = None):
     
     provider = ""
     model = ""
+    required_key = ""
     
     # Create LLM provider based on selection
     if choice == "1":
         provider = "anthropic"
         model = "claude-3-7-sonnet-20250219"
+        required_key = "ANTHROPIC_API_KEY"
     elif choice == "2":
         provider = "gemini"
         model = "gemini-2.5-flash-preview-04-17"
+        required_key = "GEMINI_API_KEY"
     elif choice == "3":
         provider = "openai"
         model = "o4-mini"
+        required_key = "OPENAI_API_KEY"
     else:
         raise ValueError(f"Invalid choice: {choice}")
     
-    llm_provider = create_llm_provider(provider, model)
+    # Check and save API key if needed
+    check_and_save_api_key(required_key)
+    
+    return create_llm_provider(provider, model)
+
+
+async def _interactive_loop(initial_prompt: str = None):
+    """Implementation of the interactive loop mode"""
+    # Display welcome panel
+    console.print(Panel.fit(
+        "Index Browser Agent Interactive Mode\n"
+        "Type your message and press Enter. The agent will respond.\n"
+        "Press Ctrl+C to exit.",
+        title="Interactive Mode",
+        border_style="blue"
+    ))
+    
+    # Select model and check API key
+    llm_provider = select_model_and_check_key()
     
     # Create agent session with selected provider
     session = AgentSession(llm=llm_provider)
@@ -484,7 +532,6 @@ async def _interactive_loop(initial_prompt: str = None):
                         
                         # Simple single-line output for steps
                         console.print(f"[bold blue]Step {step_num}:[/] {summary}")
-                        console.print(f"[dim]action_result: {action_result}[/]")
                         # Display additional info for special actions as separate lines
                         if action_result and action_result.is_done and not action_result.give_control:
                             console.print("  [green bold]✓ Task completed successfully![/]")

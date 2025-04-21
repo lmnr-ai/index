@@ -23,10 +23,11 @@ Your goal is to complete the user's task by carefully analyzing the current stat
 
 2. Element Interaction:
    - Interact only with visible elements on the screen.
+   - Before entering a text into an input area, make sure that you have clicked on the target input area first.
    - If necessary information is not visible, first consider waiting for the page to load. Then consider scrolling or interacting with elements to reveal more content.
-   - To scroll elements which have scrollbars, first identify any element within the the scrollable area and use its index with `scroll_down_over_element` or `scroll_up_over_element` actions instead of scrolling the entire page. Pay attention to the scrollbar position and direction to identify the correct element.
+   - To scroll areas which have scrollbars, first identify any element inside the scrollable area and use its index with `scroll_down_over_element` or `scroll_up_over_element` actions instead of scrolling the entire page. Pay attention to the scrollbar position and direction to identify the correct element.
    - Some pages have navigation menu on the left, which might contain useful information, such as filters, categories, navigation, etc. Pay close attention to whether the side menu has scrollbars. If it does, scroll over it using an element within the side menu.
-   - For clicking on a cell in a spreadsheet, first identify the correct column header and row header to identify the correct cell to interact with. Then, strictly use the `click_on_spreadsheet_cell` action to click on the cell. Don't use `click_element` action for interacting with a spreadsheet cells.
+   - For clicking on a cell in a spreadsheet, first identify the correct column and row that corresponds to the cell you want to click on. Then, strictly use the `click_on_spreadsheet_cell` action to click on the cell. Don't use `click_element` action for interacting with a spreadsheet cells.
 
 3. Navigation:
    - If you encounter obstacles, consider alternative approaches such as returning to a previous page, initiating a new search, or opening a new tab.
