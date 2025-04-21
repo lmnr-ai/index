@@ -391,7 +391,7 @@ def create_llm_provider(provider: str, model: str) -> BaseLLMProvider:
         console.print(f"[cyan]Using Gemini model: {model}[/]")
         return GeminiProvider(
             model=model,
-            thinking_tokens_budget=8192
+            thinking_token_budget=8192
         )
     elif provider == "anthropic":
         # Anthropic model
@@ -439,8 +439,8 @@ def check_and_save_api_key(required_key: str):
 def select_model_and_check_key():
     """Select a model and check for required API key"""
     console.print("\n[bold green]Choose an LLM model:[/]")
-    console.print("1. [bold]Claude 3.7 Sonnet[/] (default)")
-    console.print("2. [bold]Gemini 2.5 Flash[/]")
+    console.print("1. [bold]Gemini 2.5 Flash[/]")
+    console.print("2. [bold]Claude 3.7 Sonnet[/]")
     console.print("3. [bold]OpenAI o4-mini[/]")
     
     choice = Prompt.ask(
@@ -455,13 +455,13 @@ def select_model_and_check_key():
     
     # Create LLM provider based on selection
     if choice == "1":
-        provider = "anthropic"
-        model = "claude-3-7-sonnet-20250219"
-        required_key = "ANTHROPIC_API_KEY"
-    elif choice == "2":
         provider = "gemini"
         model = "gemini-2.5-flash-preview-04-17"
         required_key = "GEMINI_API_KEY"
+    elif choice == "2":
+        provider = "anthropic"
+        model = "claude-3-7-sonnet-20250219"
+        required_key = "ANTHROPIC_API_KEY"
     elif choice == "3":
         provider = "openai"
         model = "o4-mini"

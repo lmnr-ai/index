@@ -104,7 +104,7 @@ def register_default_actions(controller, output_model=None):
 
 
     @controller.action()
-    async def click_element(index: int, wait_after_click: bool, browser: Browser):
+    async def click_element(index: int, browser: Browser, wait_after_click: bool = False):
         """
         Click on the element with index. 
 

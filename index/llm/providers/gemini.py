@@ -7,10 +7,10 @@ from ..llm import BaseLLMProvider, LLMResponse, Message
 
 
 class GeminiProvider(BaseLLMProvider):
-    def __init__(self, model: str, thinking_tokens_budget: int = 1024):
+    def __init__(self, model: str, thinking_token_budget: int = 8192):
         super().__init__(model=model)
         self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-        self.thinking_tokens_budget = thinking_tokens_budget
+        self.thinking_token_budget = thinking_token_budget
 
     async def call(
         self,
@@ -24,7 +24,7 @@ class GeminiProvider(BaseLLMProvider):
         config = {
             "temperature": temperature,
             "thinking_config": {
-                "thinking_budget": self.thinking_tokens_budget
+                "thinking_budget": self.thinking_token_budget
             }
         }
         
