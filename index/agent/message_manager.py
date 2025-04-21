@@ -97,8 +97,8 @@ Today's date and time is: {datetime.now().strftime('%B %d, %Y, %I:%M%p')} - keep
 					start_tag += f" type=\"{element.input_type}\""
 
 				start_tag += ">"
-
-				highlighted_elements += f"{start_tag}{element.text.replace('\n', ' ')}</{element.tag_name}>\n"
+				element_text = element.text.replace('\n', ' ')
+				highlighted_elements += f"{start_tag}{element_text}</{element.tag_name}>\n"
 		else:
 			highlighted_elements = ''
 

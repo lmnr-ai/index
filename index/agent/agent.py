@@ -105,9 +105,6 @@ class Agent:
 		"""Get next action from LLM based on current state"""
 
 		response = await self.llm.call(input_messages)
-
-		# clean null characters from response
-		response.content = re.sub(r'\x00', '', response.content)
 		
 		# Extract content between <output> tags using regex, including variations like <output_32>
 		pattern = r"<output(?:[^>]*)>(.*?)</output(?:[^>]*)>"
@@ -117,11 +114,11 @@ class Agent:
 
 		if not match:
 			# if we couldn't find the <output> tags, it most likely means the <output*> tag is not present in the response
-			# remove closing tag just in case
-			closing_tag_pattern = r"</output(?:[^>]*)>$"
+			# remove closing and opening tags just in case
+			closing_tag_pattern = r"</output(?:[^>]*)>"
 			json_str = re.sub(closing_tag_pattern, "", response.content).strip()
 
-			open_tag_pattern = r"<output(?:[^>]*)>$"
+			open_tag_pattern = r"<output(?:[^>]*)>"
 			json_str = re.sub(open_tag_pattern, "", json_str).strip()
 
 		else:

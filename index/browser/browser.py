@@ -6,7 +6,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from importlib import resources
-from typing import Any, Optional, TypedDict
+from typing import Any, Optional
 
 from lmnr import observe
 from playwright.async_api import (
@@ -27,6 +27,7 @@ from tenacity import (
 	stop_after_attempt,
 	wait_exponential,
 )
+from typing_extensions import TypedDict  # to account for older python versions
 
 # Import detector class
 from index.browser.detector import Detector
@@ -169,6 +170,7 @@ class Browser:
 				java_script_enabled=True,
 				bypass_csp=True,
 				ignore_https_errors=True,
+				device_scale_factor=1.0,
 			)
 			
 			# Apply anti-detection scripts
@@ -476,8 +478,9 @@ class Browser:
 		cdp_session = await self.get_cdp_session()
 		screenshot_params = {
 			"format": "png",
-			"fromSurface": False,
-			"captureBeyondViewport": False
+			"fromSurface": True,
+			"captureBeyondViewport": False,
+			"scale": 1.0
 		}
 		
 		# Capture screenshot using CDP Session

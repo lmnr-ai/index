@@ -202,7 +202,7 @@ def register_default_actions(controller, output_model=None):
         return ActionResult(content=msg)
 
     @controller.action(
-        "Scroll entire page down. Use this action when you want to scroll entire page down to load more content. DON'T use this action if you want to scroll over a scrollable element."
+        "Scrolls entire page down. Use this action when you want to scroll entire page down. Don't use this action if you want to scroll over a scrollable area on a webpage."
     )
     async def scroll_page_down(browser: Browser):
         page = await browser.get_current_page()
@@ -215,7 +215,7 @@ def register_default_actions(controller, output_model=None):
         return ActionResult(content="Scrolled mouse wheel down (it doesn't guarantee that something has scrolled, you need to check new state screenshot to confirm)")
 
     @controller.action(
-        "Scroll entire page up. Use this action when you want to scroll entire page up to load more content. DON'T use this action if you want to scroll over a scrollable element."
+        "Scrolls entire page up. Use this action when you want to scroll entire page up. Don't use this action if you want to scroll over a scrollable area on a webpage."
     )
     async def scroll_page_up(browser: Browser):
         page = await browser.get_current_page()
@@ -262,6 +262,44 @@ def register_default_actions(controller, output_model=None):
         await page.mouse.wheel(0, -state.viewport.height / 3)
 
         return ActionResult(content=f"Move mouse to element with index {index} and scroll mouse wheel up. (It doesn't guarantee that something has scrolled, you need to check new state screenshot to confirm)")
+
+    @controller.action(
+        "Moves mouse at the location of the element with index `index`, which should be inside scrollable area of the webpage, identified by scrollbars. Then scrolls mouse wheel right."
+    )
+    async def scroll_right_over_element(index: int, browser: Browser):
+        page = await browser.get_current_page()
+        state = browser.get_state()
+
+        if index not in state.interactive_elements:
+            return ActionResult(error=f'Element index {index} does not exist - retry or use an alternative action')
+
+        element = state.interactive_elements[index]
+
+        await page.mouse.move(element.center.x, element.center.y)
+        await asyncio.sleep(0.1)
+        await page.mouse.wheel(state.viewport.width / 3, 0)
+
+        return ActionResult(content=f"Moved mouse to element with index {index} and scroll mouse wheel right. (It doesn't guarantee that something has scrolled, you need to check new state screenshot to confirm)")
+
+
+    @controller.action(
+        "Moves mouse at the location of the element with index `index`, which should be inside scrollable area of the webpage, identified by scrollbars. Then scrolls mouse wheel left."
+    )
+    async def scroll_left_over_element(index: int, browser: Browser):
+        page = await browser.get_current_page()
+        state = browser.get_state()
+
+        if index not in state.interactive_elements:
+            return ActionResult(error=f'Element index {index} does not exist - retry or use an alternative action')
+
+        element = state.interactive_elements[index]
+
+        await page.mouse.move(element.center.x, element.center.y)
+        await asyncio.sleep(0.1)
+        await page.mouse.wheel(-state.viewport.width / 3, 0)
+
+        return ActionResult(content=f"Moved mouse to element with index {index} and scroll mouse wheel left. (It doesn't guarantee that something has scrolled, you need to check new state screenshot to confirm)")
+
 
     @controller.action(
         'Press enter key. Use this action when you need to submit a form or perform an action that requires pressing enter.'
