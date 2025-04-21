@@ -104,12 +104,14 @@ class AgentSession:
                 stream = self.agent.run_stream(
                     prompt=prompt, 
                     agent_state=self.agent_state, 
-                    close_context=False
+                    close_context=False,
+                    max_steps=500 # large number to allow the agent to run for a long time
                 )
             else:
                 stream = self.agent.run_stream(
                     prompt=prompt,
-                    close_context=False
+                    close_context=False,
+                    max_steps=500 # large number to allow the agent to run for a long time
                 )
             
             final_output = None
@@ -384,7 +386,7 @@ def create_llm_provider(provider: str, model: str) -> BaseLLMProvider:
         console.print(f"[cyan]Using Gemini model: {model}[/]")
         return GeminiProvider(
             model=model,
-            thinking_tokens_budget=2048
+            thinking_tokens_budget=10000
         )
     elif provider == "anthropic":
         # Anthropic model
@@ -482,7 +484,7 @@ async def _interactive_loop(initial_prompt: str = None):
                         
                         # Simple single-line output for steps
                         console.print(f"[bold blue]Step {step_num}:[/] {summary}")
-                        
+                        console.print(f"[dim]action_result: {action_result}[/]")
                         # Display additional info for special actions as separate lines
                         if action_result and action_result.is_done and not action_result.give_control:
                             console.print("  [green bold]✓ Task completed successfully![/]")
