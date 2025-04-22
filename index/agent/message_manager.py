@@ -47,7 +47,7 @@ class MessageManager:
 				ImageContent(image_b64=complex_layout_highlight),
 				TextContent(text='</complex_layout_example>'),
 				TextContent(text='<small_elements_example>'),
-				TextContent(text="Here's an example of small elements on the page and their functions. Element 7, represented by 'x' icon, is a 'clear text' button. Element 8 is a 'submit' button, represented by '=' icon. This clarification should help you better understand similar web pages."),
+				TextContent(text="Here's an example of small elements on the page and their functions. Element 7, represented by 'x' icon, is a 'clear text' button. Element 8 is a 'submit' button, represented by '=' icon. This clarification should help you better understand similar layouts."),
 				ImageContent(image_b64=complex_layout_small_elements),
 				TextContent(text='</small_elements_example>'),
 				TextContent(text='<loading_pages_example>'),
@@ -97,8 +97,8 @@ Today's date and time is: {datetime.now().strftime('%B %d, %Y, %I:%M%p')} - keep
 					start_tag += f" type=\"{element.input_type}\""
 
 				start_tag += ">"
-
-				highlighted_elements += f"{start_tag}{element.text.replace('\n', ' ')}</{element.tag_name}>\n"
+				element_text = element.text.replace('\n', ' ')
+				highlighted_elements += f"{start_tag}{element_text}</{element.tag_name}>\n"
 		else:
 			highlighted_elements = ''
 

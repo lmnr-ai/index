@@ -3,12 +3,15 @@ Streamlined Playwright browser implementation.
 """
 
 import asyncio
+import base64
+import io
 import logging
 from dataclasses import dataclass, field
 from importlib import resources
-from typing import Any, Optional, TypedDict
+from typing import Any, Optional
 
 from lmnr import observe
+from PIL import Image
 from playwright.async_api import (
 	Browser as PlaywrightBrowser,
 )
@@ -27,6 +30,7 @@ from tenacity import (
 	stop_after_attempt,
 	wait_exponential,
 )
+from typing_extensions import TypedDict  # to account for older python versions
 
 # Import detector class
 from index.browser.detector import Detector
@@ -39,6 +43,7 @@ from index.browser.models import (
 from index.browser.utils import (
 	filter_elements,
 	put_highlight_elements_on_screenshot,
+	scale_b64_image,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,7 +74,7 @@ class BrowserConfig:
 
 	"""
 	cdp_url: Optional[str] = None
-	viewport_size: ViewportSize = field(default_factory=lambda: {"width": 1200, "height": 900})
+	viewport_size: ViewportSize = field(default_factory=lambda: {"width": 1024, "height": 768})
 	storage_state: Optional[StorageState] = None
 	detector: Optional[Detector] = None
 
@@ -94,6 +99,8 @@ class Browser:
 		
 		# CV detection-related attributes
 		self.detector: Optional[Detector] = config.detector
+
+		self.pixel_ratio = None
 		
 		# Initialize state
 		self._init_state()
@@ -168,7 +175,7 @@ class Browser:
 				user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.102 Safari/537.36',
 				java_script_enabled=True,
 				bypass_csp=True,
-				ignore_https_errors=True,
+				ignore_https_errors=True
 			)
 			
 			# Apply anti-detection scripts
@@ -377,7 +384,6 @@ class Browser:
 			screenshot_b64 = await self.fast_screenshot()
 			
 			interactive_elements_data = await self.get_interactive_elements(screenshot_b64, detect_sheets)
-			
 			interactive_elements = {element.index: element for element in interactive_elements_data.elements}
 			
 			# Create highlighted version of the screenshot
@@ -477,13 +483,24 @@ class Browser:
 		screenshot_params = {
 			"format": "png",
 			"fromSurface": False,
-			"captureBeyondViewport": False
+			"captureBeyondViewport": False,
 		}
 		
 		# Capture screenshot using CDP Session
 		screenshot_data = await cdp_session.send("Page.captureScreenshot", screenshot_params)
 		screenshot_b64 = screenshot_data["data"]
-		
+
+		if self.pixel_ratio is None:
+
+			test_img_data = base64.b64decode(screenshot_b64)
+			test_img = Image.open(io.BytesIO(test_img_data))
+			self.pixel_ratio = round(self.config.viewport_size['width'] / test_img.size[0] * 10) / 10
+			logger.info(f'Pixel ratio: {self.pixel_ratio}')
+
+		if self.pixel_ratio != 1:
+			logger.info(f'Scaling screenshot by {self.pixel_ratio}x')
+			screenshot_b64 = scale_b64_image(screenshot_b64, self.pixel_ratio)
+
 		return screenshot_b64
 
 	async def get_cookies(self) -> list[dict[str, Any]]:

@@ -490,7 +490,7 @@
                 }
                 
                 // Check if current element is fully contained within an existing element with higher weight
-                if (existing.weight > current.weight && 
+                if (existing.weight >= current.weight && 
                     isFullyContained(currentRect, existingRect) && 
                     existing.zIndex === current.zIndex) {
                     shouldAdd = false;

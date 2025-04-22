@@ -30,8 +30,8 @@ class ActionModel(BaseModel):
 class AgentLLMOutput(BaseModel):
 	"""Output model for agent"""
 
-	thought: str
 	action: ActionModel
+	thought: Optional[str] = None
 	summary: Optional[str] = None
 	thinking_block: Optional[ThinkingBlock] = None
 

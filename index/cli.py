@@ -5,6 +5,7 @@ import os
 from typing import Dict, List, Optional
 
 import typer
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -19,7 +20,10 @@ from index.agent.models import AgentOutput, AgentState
 from index.browser.browser import BrowserConfig
 from index.llm.llm import BaseLLMProvider
 from index.llm.providers.anthropic import AnthropicProvider
+from index.llm.providers.gemini import GeminiProvider
 from index.llm.providers.openai import OpenAIProvider
+
+load_dotenv()
 
 # Create Typer app
 app = typer.Typer(help="Index - Browser AI agent CLI")
@@ -100,12 +104,14 @@ class AgentSession:
                 stream = self.agent.run_stream(
                     prompt=prompt, 
                     agent_state=self.agent_state, 
-                    close_context=False
+                    close_context=False,
+                    max_steps=500 # large number to allow the agent to run for a long time
                 )
             else:
                 stream = self.agent.run_stream(
                     prompt=prompt,
-                    close_context=False
+                    close_context=False,
+                    max_steps=500 # large number to allow the agent to run for a long time
                 )
             
             final_output = None
@@ -355,7 +361,12 @@ def run_ui(prompt: str = typer.Option(None, "--prompt", "-p", help="Initial prom
     """
     Launch the graphical UI for the Index browser agent
     """
+    # Select model and check API key
+    llm_provider = select_model_and_check_key()
+    
+    # Initialize UI with the selected LLM provider
     agent_ui = AgentUI()
+    agent_ui.agent_session = AgentSession(llm=llm_provider)
     
     if prompt:
         # If a prompt is provided, we'll send it once the UI is ready
@@ -369,20 +380,113 @@ def run_ui(prompt: str = typer.Option(None, "--prompt", "-p", help="Initial prom
     agent_ui.run()
 
 
-def create_llm_provider(model_choice: str) -> BaseLLMProvider:
+def create_llm_provider(provider: str, model: str) -> BaseLLMProvider:
     """Create an LLM provider based on model choice"""
-    if model_choice.startswith("o"):
+    if provider == "openai":
         # OpenAI model
-        console.print(f"[cyan]Using OpenAI model: {model_choice}[/]")
-        return OpenAIProvider(model=model_choice, reasoning_effort="low")
-    else:
-        # Anthropic model by default
-        console.print(f"[cyan]Using Anthropic model: {model_choice}[/]")
+        console.print(f"[cyan]Using OpenAI model: {model}[/]")
+        return OpenAIProvider(model=model, reasoning_effort="low")
+    elif provider == "gemini":
+        # Gemini model
+        if model == "gemini-2.5-pro-preview-03-25":
+            console.print(f"[cyan]Using Gemini model: {model}[/]")
+            return GeminiProvider(
+                model=model,
+                thinking_token_budget=8192
+            )
+        elif model == "gemini-2.5-flash-preview-04-17":
+            console.print(f"[cyan]Using Gemini model: {model}[/]")
+            return GeminiProvider(
+                model=model,
+                thinking_token_budget=8192
+            )
+        else:
+            raise ValueError(f"Unsupported Gemini model: {model}")
+    elif provider == "anthropic":
+        # Anthropic model
+        console.print(f"[cyan]Using Anthropic model: {model}[/]")
         return AnthropicProvider(
-            model=model_choice,
+            model=model,
             enable_thinking=True,
             thinking_token_budget=2048
         )
+    else:
+        raise ValueError(f"Unsupported provider: {provider}")
+
+
+def check_and_save_api_key(required_key: str):
+    """Check if API key exists, prompt for it if missing, and save to .env file"""
+    if not os.environ.get(required_key):
+        console.print(f"\n[yellow]API key {required_key} not found in environment.[/]")
+        api_key = Prompt.ask(f"Enter your {required_key}", password=True)
+        
+        # Save to .env file
+        env_path = ".env"
+        
+        if os.path.exists(env_path):
+            # Read existing content
+            with open(env_path, "r") as f:
+                env_content = f.read()
+            env_content += f"\n{required_key}={api_key}"
+            
+            with open(env_path, "w") as f:
+                f.write(env_content)
+            console.print(f"[green]Saved {required_key} to .env file[/]")
+        else:
+            # Create new .env file
+            with open(env_path, "w") as f:
+                f.write(f"{required_key}={api_key}")
+            console.print("[green]Created .env file[/]")
+
+        # Update environment variable for current session
+        os.environ[required_key] = api_key
+        
+        # Reload dotenv to ensure changes are applied
+        load_dotenv(override=True)
+        
+
+def select_model_and_check_key():
+    """Select a model and check for required API key"""
+    console.print("\n[bold green]Choose an LLM model:[/]")
+    console.print("1. [bold]Gemini 2.5 Pro[/]")
+    console.print("2. [bold]Gemini 2.5 Flash[/]")
+    console.print("3. [bold]Claude 3.7 Sonnet[/]")
+    console.print("4. [bold]OpenAI o4-mini[/]")
+    
+    choice = Prompt.ask(
+        "[bold]Select model[/]",
+        choices=["1", "2", "3", "4"],
+        default="1"
+    )
+    
+    provider = ""
+    model = ""
+    required_key = ""
+    
+    # Create LLM provider based on selection
+    if choice == "1":
+        provider = "gemini"
+        model = "gemini-2.5-pro-preview-03-25"
+        required_key = "GEMINI_API_KEY"
+    elif choice == "2":
+        provider = "gemini"
+        model = "gemini-2.5-flash-preview-04-17"
+        required_key = "GEMINI_API_KEY"
+    elif choice == "3":
+        provider = "anthropic"
+        model = "claude-3-7-sonnet-20250219"
+        required_key = "ANTHROPIC_API_KEY"
+    elif choice == "4":
+        provider = "openai"
+        model = "o4-mini"
+        required_key = "OPENAI_API_KEY"
+    else:
+        raise ValueError(f"Invalid choice: {choice}")
+    
+    # Check and save API key if needed
+    check_and_save_api_key(required_key)
+    
+    return create_llm_provider(provider, model)
 
 
 async def _interactive_loop(initial_prompt: str = None):
@@ -396,20 +500,8 @@ async def _interactive_loop(initial_prompt: str = None):
         border_style="blue"
     ))
     
-    # Model selection menu
-    console.print("\n[bold green]Choose an LLM model:[/]")
-    console.print("1. [bold]Claude 3.7 Sonnet[/] (default)")
-    console.print("2. [bold]OpenAI o4-mini[/]")
-    
-    choice = Prompt.ask(
-        "[bold]Select model[/]",
-        choices=["1", "2"],
-        default="1"
-    )
-    
-    # Create LLM provider based on selection
-    model_name = "claude-3-7-sonnet-20250219" if choice == "1" else "o4-mini"
-    llm_provider = create_llm_provider(model_name)
+    # Select model and check API key
+    llm_provider = select_model_and_check_key()
     
     # Create agent session with selected provider
     session = AgentSession(llm=llm_provider)
@@ -452,12 +544,8 @@ async def _interactive_loop(initial_prompt: str = None):
                         action_result = chunk.content.action_result
                         summary = chunk.content.summary
                         
-                        # Use alternating colors for consecutive steps to make them visually distinct
-                        step_color = "cyan" if step_num % 2 == 0 else "blue"
-                        
                         # Simple single-line output for steps
-                        console.print(f"[bold {step_color}]Step {step_num}:[/] {summary}")
-                        
+                        console.print(f"[bold blue]Step {step_num}:[/] {summary}")
                         # Display additional info for special actions as separate lines
                         if action_result and action_result.is_done and not action_result.give_control:
                             console.print("  [green bold]✓ Task completed successfully![/]")
