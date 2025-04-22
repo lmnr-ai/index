@@ -10,7 +10,7 @@ packages = ["index"]
 
 [project]
 name = "lmnr-index"
-version = "0.1.6"
+version = "0.1.7"
 description = "Index - SOTA browser AI agent for autonomous task execution on the web"
 readme = "README.md"
 requires-python = ">=3.10"
