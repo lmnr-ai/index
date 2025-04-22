@@ -121,6 +121,8 @@ class Agent:
 			open_tag_pattern = r"<output(?:[^>]*)>"
 			json_str = re.sub(open_tag_pattern, "", json_str).strip()
 
+			json_str = json_str.replace("```json", "").replace("```", "").strip()
+
 		else:
 			# Extract just the content between the tags without any additional replacement
 			json_str = match.group(1).strip()

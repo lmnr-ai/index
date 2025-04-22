@@ -22,7 +22,7 @@ def load_demo_image_as_b64(image_name: str) -> str:
         with importlib.resources.path('index.agent.demo_images', image_name) as img_path:
             with open(img_path, 'rb') as img_file:
                 b64 = base64.b64encode(img_file.read()).decode('utf-8')
-                return scale_b64_image(b64, 0.85)
+                return scale_b64_image(b64, 0.75)
     except Exception as e:
         logger.error(f"Error loading demo image {image_name}: {e}")
         raise

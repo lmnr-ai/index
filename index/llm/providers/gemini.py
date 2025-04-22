@@ -19,20 +19,26 @@ class GeminiProvider(BaseLLMProvider):
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> LLMResponse:
-        gemini_messages = [msg.to_gemini_format() for msg in messages]
+        
+        if len(messages) < 2 or messages[0].role != "system":
+            raise ValueError("System message is required and length of messages must be at least 2")
+
+        system = messages[0].content[0].text
+        gemini_messages = [msg.to_gemini_format() for msg in messages[1:]]
         
         config = {
             "temperature": temperature,
             "thinking_config": {
                 "thinking_budget": self.thinking_token_budget
+            },
+            "system_instruction": {
+                "text": system
             }
         }
         
         if max_tokens:
             config["max_output_tokens"] = max_tokens
 
-
-            
         response = await self.client.aio.models.generate_content(
             model=self.model,
             contents=gemini_messages,

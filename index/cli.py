@@ -388,11 +388,20 @@ def create_llm_provider(provider: str, model: str) -> BaseLLMProvider:
         return OpenAIProvider(model=model, reasoning_effort="low")
     elif provider == "gemini":
         # Gemini model
-        console.print(f"[cyan]Using Gemini model: {model}[/]")
-        return GeminiProvider(
-            model=model,
-            thinking_token_budget=8192
-        )
+        if model == "gemini-2.5-pro-preview-03-25":
+            console.print(f"[cyan]Using Gemini model: {model}[/]")
+            return GeminiProvider(
+                model=model,
+                thinking_token_budget=8192
+            )
+        elif model == "gemini-2.5-flash-preview-04-17":
+            console.print(f"[cyan]Using Gemini model: {model}[/]")
+            return GeminiProvider(
+                model=model,
+                thinking_token_budget=8192
+            )
+        else:
+            raise ValueError(f"Unsupported Gemini model: {model}")
     elif provider == "anthropic":
         # Anthropic model
         console.print(f"[cyan]Using Anthropic model: {model}[/]")
@@ -440,12 +449,13 @@ def select_model_and_check_key():
     """Select a model and check for required API key"""
     console.print("\n[bold green]Choose an LLM model:[/]")
     console.print("1. [bold]Gemini 2.5 Flash[/]")
-    console.print("2. [bold]Claude 3.7 Sonnet[/]")
-    console.print("3. [bold]OpenAI o4-mini[/]")
+    console.print("2. [bold]Gemini 2.5 Pro[/]")
+    console.print("3. [bold]Claude 3.7 Sonnet[/]")
+    console.print("4. [bold]OpenAI o4-mini[/]")
     
     choice = Prompt.ask(
         "[bold]Select model[/]",
-        choices=["1", "2", "3"],
+        choices=["1", "2", "3", "4"],
         default="1"
     )
     
@@ -459,10 +469,14 @@ def select_model_and_check_key():
         model = "gemini-2.5-flash-preview-04-17"
         required_key = "GEMINI_API_KEY"
     elif choice == "2":
+        provider = "gemini"
+        model = "gemini-2.5-pro-preview-03-25"
+        required_key = "GEMINI_API_KEY"
+    elif choice == "3":
         provider = "anthropic"
         model = "claude-3-7-sonnet-20250219"
         required_key = "ANTHROPIC_API_KEY"
-    elif choice == "3":
+    elif choice == "4":
         provider = "openai"
         model = "o4-mini"
         required_key = "OPENAI_API_KEY"

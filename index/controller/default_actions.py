@@ -202,7 +202,7 @@ def register_default_actions(controller, output_model=None):
         return ActionResult(content=msg)
 
     @controller.action(
-        "Scrolls entire page down. Use this action when you want to scroll entire page down. Don't use this action if you want to scroll over a scrollable area on a webpage."
+        "Scrolls entire page down. Use this action when you want to scroll the entire page down. Don't use this action if you want to scroll over a specific scrollable area on a page."
     )
     async def scroll_page_down(browser: Browser):
         page = await browser.get_current_page()
@@ -213,9 +213,10 @@ def register_default_actions(controller, output_model=None):
         # scroll down by one page
         await page.mouse.wheel(0, state.viewport.height * 0.8)
         return ActionResult(content="Scrolled mouse wheel down (it doesn't guarantee that something has scrolled, you need to check new state screenshot to confirm)")
-
+    
+    
     @controller.action(
-        "Scrolls entire page up. Use this action when you want to scroll entire page up. Don't use this action if you want to scroll over a scrollable area on a webpage."
+        "Scrolls entire page up. Use this action when you want to scroll the entire page up. Don't use this action if you want to scroll over a specific scrollable area on a page."
     )
     async def scroll_page_up(browser: Browser):
         page = await browser.get_current_page()
@@ -264,7 +265,7 @@ def register_default_actions(controller, output_model=None):
         return ActionResult(content=f"Move mouse to element with index {index} and scroll mouse wheel up. (It doesn't guarantee that something has scrolled, you need to check new state screenshot to confirm)")
 
     @controller.action(
-        "Moves mouse at the location of the element with index `index`, which should be inside scrollable area of the webpage, identified by scrollbars. Then scrolls mouse wheel right."
+        "Moves mouse at the location of the element with index `index`, which should be inside scrollable area of the webpage, identified by scrollbars. Then scrolls mouse wheel horizontally to the right."
     )
     async def scroll_right_over_element(index: int, browser: Browser):
         page = await browser.get_current_page()
@@ -279,11 +280,11 @@ def register_default_actions(controller, output_model=None):
         await asyncio.sleep(0.1)
         await page.mouse.wheel(state.viewport.width / 3, 0)
 
-        return ActionResult(content=f"Moved mouse to element with index {index} and scroll mouse wheel right. (It doesn't guarantee that something has scrolled, you need to check new state screenshot to confirm)")
+        return ActionResult(content=f"Moved mouse to element with index {index} and scroll mouse wheel horizontally to the right. (It doesn't guarantee that something has scrolled, you need to check new state screenshot to confirm)")
 
 
     @controller.action(
-        "Moves mouse at the location of the element with index `index`, which should be inside scrollable area of the webpage, identified by scrollbars. Then scrolls mouse wheel left."
+        "Moves mouse at the location of the element with index `index`, which should be inside scrollable area of the webpage, identified by scrollbars. Then scrolls mouse wheel horizontally to the left."
     )
     async def scroll_left_over_element(index: int, browser: Browser):
         page = await browser.get_current_page()
@@ -298,7 +299,7 @@ def register_default_actions(controller, output_model=None):
         await asyncio.sleep(0.1)
         await page.mouse.wheel(-state.viewport.width / 3, 0)
 
-        return ActionResult(content=f"Moved mouse to element with index {index} and scroll mouse wheel left. (It doesn't guarantee that something has scrolled, you need to check new state screenshot to confirm)")
+        return ActionResult(content=f"Moved mouse to element with index {index} and scroll mouse wheel horizontally to the left. (It doesn't guarantee that something has scrolled, you need to check new state screenshot to confirm)")
 
 
     @controller.action(

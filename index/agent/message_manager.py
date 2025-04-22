@@ -47,7 +47,7 @@ class MessageManager:
 				ImageContent(image_b64=complex_layout_highlight),
 				TextContent(text='</complex_layout_example>'),
 				TextContent(text='<small_elements_example>'),
-				TextContent(text="Here's an example of small elements on the page and their functions. Element 7, represented by 'x' icon, is a 'clear text' button. Element 8 is a 'submit' button, represented by '=' icon. This clarification should help you better understand similar web pages."),
+				TextContent(text="Here's an example of small elements on the page and their functions. Element 7, represented by 'x' icon, is a 'clear text' button. Element 8 is a 'submit' button, represented by '=' icon. This clarification should help you better understand similar layouts."),
 				ImageContent(image_b64=complex_layout_small_elements),
 				TextContent(text='</small_elements_example>'),
 				TextContent(text='<loading_pages_example>'),
