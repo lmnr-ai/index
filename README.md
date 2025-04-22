@@ -7,13 +7,15 @@
 Index is the SOTA open-source browser agent for autonomously executing complex tasks on the web.
 
 - [x] Powered by reasoning LLMs with vision capabilities.
-    - [x] Claude 3.7 Sonnet with extended thinking (top performing model)
-    - [x] OpenAI o4-mini
-    - [ ] Gemini models (upcoming)
+    - [x] Gemini 2.5 Pro (really fast and accurate)
+    - [x] Claude 3.7 Sonnet with extended thinking (reliable and accurate)
+    - [x] OpenAI o4-mini (depending on the reasoning effort, provides good balance between speed, cost and accuracy)
+    - [x] Gemini 2.5 Flash (really fast, cheap, and good for less complex tasks)
+
 - [x] `pip install lmnr-index` and use it in your project
 - [x] `index run` to run the agent in the interactive CLI
 - [x] Index is also available as a [serverless API.](https://docs.lmnr.ai/laminar-index/introduction)
-- [x] You can also try out Index via [Chat UI](https://docs.lmnr.ai/laminar-index/introduction#hosted-ui) or fully [self-host the chat UI](https://x.com/skull8888888888/status/1910763169489764374).
+- [x] You can also try out Index via [Chat UI](https://lmnr.ai/chat).
 - [x] Supports advanced [browser agent observability](https://docs.lmnr.ai/laminar-index/observability) powered by open-source platform [Laminar](https://github.com/lmnr-ai/lmnr).
 
 prompt: go to ycombinator.com. summarize first 3 companies in the W25 batch and make new spreadsheet in google sheets.
@@ -61,6 +63,16 @@ pip install lmnr-index
 playwright install chromium
 ```
 
+### Setup model API keys
+
+Setup your model API keys in `.env` file in your project root:
+```
+ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
+OPENAI_API_KEY=
+```
+
+
 ### Run the agent with CLI
 
 You can run Index via interactive CLI. It features:
@@ -85,9 +97,10 @@ Loaded existing browser state
 ╰────────────────────────────────────────────────────────────╯
 
 Choose an LLM model:
-1. Claude 3.7 Sonnet (default)
-2. OpenAI o4-mini
-Select model [1/2] (1): 2
+1. Gemini 2.5 Flash
+2. Claude 3.7 Sonnet
+3. OpenAI o4-mini
+Select model [1/2] (1): 3
 Using OpenAI model: o4-mini
 Loaded existing browser state
 

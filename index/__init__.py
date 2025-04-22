@@ -5,6 +5,7 @@ from index.browser.detector import Detector
 from index.browser.models import InteractiveElement
 from index.llm.providers.anthropic import AnthropicProvider
 from index.llm.providers.anthropic_bedrock import AnthropicBedrockProvider
+from index.llm.providers.gemini import GeminiProvider
 from index.llm.providers.openai import OpenAIProvider
 
 __all__ = [
@@ -16,6 +17,7 @@ __all__ = [
 	'AnthropicProvider',
 	'AnthropicBedrockProvider',
 	'OpenAIProvider',
+	'GeminiProvider',
 	'AgentOutput',
 	'Detector',
 	'InteractiveElement',

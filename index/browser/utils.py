@@ -19,7 +19,7 @@ def put_highlight_elements_on_screenshot(elements: dict[int, InteractiveElement]
         draw = ImageDraw.Draw(image)
         
         # Colors (RGB format for PIL)
-        colors = [
+        base_colors = [
             (204, 0, 0),
             (0, 136, 0),
             (0, 0, 204),
@@ -34,6 +34,21 @@ def put_highlight_elements_on_screenshot(elements: dict[int, InteractiveElement]
             (36, 82, 123)
         ]
         placed_labels = []
+        
+        def generate_unique_color(base_color, element_idx):
+            """Generate a unique color variation based on element index"""
+            r, g, b = base_color
+            # Use prime numbers to create deterministic but non-repeating patterns
+            offset_r = (element_idx * 17) % 31 - 15  # Range: -15 to 15
+            offset_g = (element_idx * 23) % 29 - 14  # Range: -14 to 14
+            offset_b = (element_idx * 13) % 27 - 13  # Range: -13 to 13
+            
+            # Ensure RGB values stay within 0-255 range
+            r = max(0, min(255, r + offset_r))
+            g = max(0, min(255, g + offset_g))
+            b = max(0, min(255, b + offset_b))
+            
+            return (r, g, b)
         
         # Load custom font from the package
         try:
@@ -50,7 +65,8 @@ def put_highlight_elements_on_screenshot(elements: dict[int, InteractiveElement]
             if element.browser_agent_id.startswith("row_") or element.browser_agent_id.startswith("column_"):
                 continue
 
-            color = colors[idx % len(colors)]
+            base_color = base_colors[idx % len(base_colors)]
+            color = generate_unique_color(base_color, idx)
             rect = element.viewport
             
             # Draw rectangle
@@ -62,7 +78,7 @@ def put_highlight_elements_on_screenshot(elements: dict[int, InteractiveElement]
             
             # Prepare label
             text = str(idx)
-            
+                
             # Get precise text dimensions for proper centering
             text_bbox = draw.textbbox((0, 0), text, font=font)
             text_width = text_bbox[2] - text_bbox[0]
@@ -115,7 +131,7 @@ def put_highlight_elements_on_screenshot(elements: dict[int, InteractiveElement]
                 fill=color
             )
                         
-			# magic numbers to center the text
+            # magic numbers to center the text
             text_x = label_x + 3
             text_y = label_y - 1
             
@@ -126,7 +142,7 @@ def put_highlight_elements_on_screenshot(elements: dict[int, InteractiveElement]
                 fill=(255, 255, 255),
                 font=font
             )
-            
+                
             placed_labels.append(label_rect)
         
         # Convert back to base64
