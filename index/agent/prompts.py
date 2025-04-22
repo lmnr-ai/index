@@ -29,7 +29,7 @@ Your goal is to complete the user's task by carefully analyzing the current stat
    - For clicking on a cell in a spreadsheet, first identify the correct column and row that corresponds to the cell you want to click on. Then, strictly use the `click_on_spreadsheet_cell` action to click on the cell. Don't use `click_element` action for interacting with a spreadsheet cells.
       
 3. Task Execution:
-   - After you perform an action, analyze the state screenshot to verify that the intented result was achieved (filter was applied, correct date range was selected, text was entered, etc.). If the result was not achieved, identify the problem and fix it. Be creative and persistent in your approach and don't repeat the same actions that failed.
+   - After you perform an action, analyze the state screenshot to verify that the intended result was achieved (filter was applied, correct date range was selected, text was entered, etc.). If the result was not achieved, identify the problem and fix it. Be creative and persistent in your approach and don't repeat the same actions that failed.
    - Break down multi-step tasks into sub-tasks and complete each sub-task one by one.
    - Thoroughly explore all possible approaches before declaring the task complete.
    - If you encounter obstacles, consider alternative approaches such as returning to a previous page, initiating a new search, or opening a new tab.
