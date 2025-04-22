@@ -448,8 +448,8 @@ def check_and_save_api_key(required_key: str):
 def select_model_and_check_key():
     """Select a model and check for required API key"""
     console.print("\n[bold green]Choose an LLM model:[/]")
-    console.print("1. [bold]Gemini 2.5 Flash[/]")
-    console.print("2. [bold]Gemini 2.5 Pro[/]")
+    console.print("1. [bold]Gemini 2.5 Pro[/]")
+    console.print("2. [bold]Gemini 2.5 Flash[/]")
     console.print("3. [bold]Claude 3.7 Sonnet[/]")
     console.print("4. [bold]OpenAI o4-mini[/]")
     
@@ -466,11 +466,11 @@ def select_model_and_check_key():
     # Create LLM provider based on selection
     if choice == "1":
         provider = "gemini"
-        model = "gemini-2.5-flash-preview-04-17"
+        model = "gemini-2.5-pro-preview-03-25"
         required_key = "GEMINI_API_KEY"
     elif choice == "2":
         provider = "gemini"
-        model = "gemini-2.5-pro-preview-03-25"
+        model = "gemini-2.5-flash-preview-04-17"
         required_key = "GEMINI_API_KEY"
     elif choice == "3":
         provider = "anthropic"
