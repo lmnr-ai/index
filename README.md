@@ -11,7 +11,6 @@ Index is the SOTA open-source browser agent for autonomously executing complex t
     - [x] Claude 3.7 Sonnet with extended thinking (reliable and accurate)
     - [x] OpenAI o4-mini (depending on the reasoning effort, provides good balance between speed, cost and accuracy)
     - [x] Gemini 2.5 Flash (really fast, cheap, and good for less complex tasks)
-
 - [x] `pip install lmnr-index` and use it in your project
 - [x] `index run` to run the agent in the interactive CLI
 - [x] Index is also available as a [serverless API.](https://docs.lmnr.ai/laminar-index/introduction)
