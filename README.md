@@ -21,6 +21,10 @@ prompt: go to ycombinator.com. summarize first 3 companies in the W25 batch and 
 
 https://github.com/user-attachments/assets/2b46ee20-81b6-4188-92fb-4d97fe0b3d6a
 
+## Documentation
+
+Check out full documentation [here](https://docs.lmnr.ai/index-agent/getting-started)
+
 ## Index API
 
 The easiest way to use Index in production is via the [serverless API](https://docs.lmnr.ai/laminar-index/introduction). Index API manages remote browser sessions, agent infrastructure and [browser observability](https://docs.lmnr.ai/laminar-index/tracing). To get started, [sign up](https://lmnr.ai/sign-in) and create project API key. Read the [docs](https://docs.lmnr.ai/laminar-index/introduction) to learn more.
