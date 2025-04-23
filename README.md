@@ -37,13 +37,14 @@ pip install lmnr
 ### Use Index via API
 ```python
 from lmnr import Laminar, AsyncLaminarClient
+import asyncio
 # you can also set LMNR_PROJECT_API_KEY environment variable
 
 # Initialize tracing
 Laminar.initialize(project_api_key="your_api_key")
 
 # Initialize the client
-client = AsyncLaminarClient(api_key="your_api_key")
+client = AsyncLaminarClient(project_api_key="your_api_key")
 
 async def main():
 
