@@ -36,26 +36,23 @@ pip install lmnr
 
 ### Use Index via API
 ```python
-from lmnr import Laminar, AsyncLaminarClient
-import asyncio
+from lmnr import Laminar, LaminarClient
 # you can also set LMNR_PROJECT_API_KEY environment variable
 
 # Initialize tracing
 Laminar.initialize(project_api_key="your_api_key")
 
 # Initialize the client
-client = AsyncLaminarClient(project_api_key="your_api_key")
+client = LaminarClient(project_api_key="your_api_key")
 
-async def main():
-
-    response = await client.agent.run(
-        prompt="Navigate to news.ycombinator.com, find a post about AI, and summarize it"
-    )
-
-    print(response.result)
+for chunk in client.agent.run(
+    stream=True,
+    model_provider="gemini",
+    model="gemini-2.5-pro-preview-03-25"
+    prompt="Navigate to news.ycombinator.com, find a post about AI, and summarize it"
+):
+    print(chunk)
     
-if __name__ == "__main__":
-    asyncio.run(main())
 ```
 ## Local Quick Start
 
