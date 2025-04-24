@@ -48,13 +48,13 @@ def put_highlight_elements_on_screenshot(elements: dict[int, InteractiveElement]
             g = max(0, min(255, g + offset_g))
             b = max(0, min(255, b + offset_b))
             
-            return (r, g, b)
+            return (r, g, b) 
         
         # Load custom font from the package
         try:
             # Path to your packaged font
             font_path = Path(__file__).parent / "fonts" / "OpenSans-Medium.ttf"
-            font = ImageFont.truetype(str(font_path), 14)
+            font = ImageFont.truetype(str(font_path), 11)
         except Exception as e:
             logger.warning(f"Could not load custom font: {e}, falling back to default")
             font = ImageFont.load_default()
@@ -67,7 +67,7 @@ def put_highlight_elements_on_screenshot(elements: dict[int, InteractiveElement]
 
             base_color = base_colors[idx % len(base_colors)]
             color = generate_unique_color(base_color, idx)
-            rect = element.viewport
+            rect = element.scaled_rect
             
             # Draw rectangle
             draw.rectangle(
@@ -85,9 +85,8 @@ def put_highlight_elements_on_screenshot(elements: dict[int, InteractiveElement]
             text_height = text_bbox[3] - text_bbox[1]
             
             # Make label size exactly proportional for better aesthetics
-            # Square labels look better for single digits as seen in the example image
-            label_width = text_width + 6
-            label_height = text_height + 6
+            label_width = text_width + 4
+            label_height = text_height + 4
             
             # Positioning logic
             if label_width > rect.width or label_height > rect.height:

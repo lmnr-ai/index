@@ -100,7 +100,7 @@ class Browser:
 		# CV detection-related attributes
 		self.detector: Optional[Detector] = config.detector
 
-		self.pixel_ratio = None
+		self.screenshot_scale_factor = None
 		
 		# Initialize state
 		self._init_state()
@@ -490,16 +490,17 @@ class Browser:
 		screenshot_data = await cdp_session.send("Page.captureScreenshot", screenshot_params)
 		screenshot_b64 = screenshot_data["data"]
 
-		if self.pixel_ratio is None:
+		if self.screenshot_scale_factor is None:
 
 			test_img_data = base64.b64decode(screenshot_b64)
 			test_img = Image.open(io.BytesIO(test_img_data))
-			self.pixel_ratio = round(self.config.viewport_size['width'] / test_img.size[0] * 10) / 10
-			logger.info(f'Pixel ratio: {self.pixel_ratio}')
+			logger.info(f'Test image size: {test_img.size}')
+			self.screenshot_scale_factor = 1024 / test_img.size[0]
+			logger.info(f'Screenshot scale factor: {self.screenshot_scale_factor}')
 
-		if self.pixel_ratio != 1:
-			logger.info(f'Scaling screenshot by {self.pixel_ratio}x')
-			screenshot_b64 = scale_b64_image(screenshot_b64, self.pixel_ratio)
+		if self.screenshot_scale_factor != 1:
+			logger.info(f'Scaling screenshot by {self.screenshot_scale_factor}x')
+			screenshot_b64 = scale_b64_image(screenshot_b64, self.screenshot_scale_factor)
 
 		return screenshot_b64
 

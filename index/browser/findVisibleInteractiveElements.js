@@ -573,7 +573,16 @@
             if (elementType === 'input' && element.hasAttribute('type')) {
                 inputType = element.getAttribute('type').toLowerCase();
             }
-
+            
+            // scaledRect is for coordinates scaled to 1024 width
+            const scaleFactor = 1024 / window.innerWidth
+            const scaledRect = {
+                x: Math.round(rect.left * scaleFactor),
+                y: Math.round(rect.top * scaleFactor),
+                width: Math.round(rect.width * scaleFactor),
+                height: Math.round(rect.height * scaleFactor),
+            }
+            
             // Create element data object
             const elementData = {
                 tagName: elementType,
@@ -607,6 +616,7 @@
                     width: Math.round(rect.width),
                     height: Math.round(rect.height)
                 },
+                scaledRect: scaledRect,
                 zIndex: item.zIndex
             };
             
