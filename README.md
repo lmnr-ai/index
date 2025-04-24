@@ -48,7 +48,7 @@ client = LaminarClient(project_api_key="your_api_key")
 for chunk in client.agent.run(
     stream=True,
     model_provider="gemini",
-    model="gemini-2.5-pro-preview-03-25"
+    model="gemini-2.5-pro-preview-03-25",
     prompt="Navigate to news.ycombinator.com, find a post about AI, and summarize it"
 ):
     print(chunk)
