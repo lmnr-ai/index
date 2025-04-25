@@ -100,7 +100,7 @@ class Browser:
 		# CV detection-related attributes
 		self.detector: Optional[Detector] = config.detector
 
-		self.pixel_ratio = None
+		self.screenshot_scale_factor = None
 		
 		# Initialize state
 		self._init_state()
@@ -437,13 +437,11 @@ class Browser:
 		elements = []
 
 		if self.detector is not None:
-			browser_elements_data_task = asyncio.create_task(self.detect_browser_elements())
-			cv_elements_task = asyncio.create_task(self.detector.detect_from_image(screenshot_b64, detect_sheets))
+			browser_elements_data = await self.detect_browser_elements()
+ 
+			scale_factor = browser_elements_data.viewport.width / 1024
 
-			browser_elements_data, cv_elements = await asyncio.gather(
-				browser_elements_data_task,
-				cv_elements_task
-			)
+			cv_elements = await self.detector.detect_from_image(screenshot_b64, scale_factor, detect_sheets)
 
 			# Combine and filter detections
 			elements = filter_elements(browser_elements_data.elements + cv_elements)
@@ -490,17 +488,15 @@ class Browser:
 		screenshot_data = await cdp_session.send("Page.captureScreenshot", screenshot_params)
 		screenshot_b64 = screenshot_data["data"]
 
-		if self.pixel_ratio is None:
+		if self.screenshot_scale_factor is None:
 
 			test_img_data = base64.b64decode(screenshot_b64)
 			test_img = Image.open(io.BytesIO(test_img_data))
-			self.pixel_ratio = round(self.config.viewport_size['width'] / test_img.size[0] * 10) / 10
-			logger.info(f'Pixel ratio: {self.pixel_ratio}')
+			logger.info(f'Test image size: {test_img.size}')
+			self.screenshot_scale_factor = 1024 / test_img.size[0]
+			logger.info(f'Screenshot scale factor: {self.screenshot_scale_factor}')
 
-		if self.pixel_ratio != 1:
-			logger.info(f'Scaling screenshot by {self.pixel_ratio}x')
-			screenshot_b64 = scale_b64_image(screenshot_b64, self.pixel_ratio)
-
+		screenshot_b64 = scale_b64_image(screenshot_b64, self.screenshot_scale_factor)
 		return screenshot_b64
 
 	async def get_cookies(self) -> list[dict[str, Any]]:

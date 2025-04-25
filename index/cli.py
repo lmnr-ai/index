@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 import asyncio
 import json
+import logging
 import os
+import subprocess
+import time
 from typing import Dict, List, Optional
 
 import typer
 from dotenv import load_dotenv
 from rich.console import Console
+from rich.logging import RichHandler
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Prompt
@@ -30,14 +34,40 @@ app = typer.Typer(help="Index - Browser AI agent CLI")
 
 # Configuration constants
 BROWSER_STATE_FILE = "browser_state.json"
+DEFAULT_CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+DEFAULT_DEBUGGING_PORT = 9222
 
 console = Console()
+
+def setup_logging(debug: bool = False):
+    """Configure logging based on debug flag"""
+    log_level = logging.INFO if debug else logging.WARNING
+    
+    # Configure root logger
+    logging.basicConfig(
+        level=log_level,
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True, console=console)]
+    )
+    
+    # Set specific logger levels
+    logging.getLogger("index").setLevel(log_level)
+    logging.getLogger("playwright").setLevel(logging.WARNING)  # Always keep playwright at WARNING
+    
+    if debug:
+        console.print("[yellow]Debug mode enabled - logging set to INFO level[/]")
 
 class AgentSession:
     """Manages an agent session with state persistence"""
     
-    def __init__(self, llm: Optional[BaseLLMProvider] = None):
+    def __init__(self, llm: Optional[BaseLLMProvider] = None, use_local_chrome: bool = False, chrome_path: str = DEFAULT_CHROME_PATH, debugging_port: int = DEFAULT_DEBUGGING_PORT, debug: bool = False):
         self.llm = llm
+        self.chrome_process = None
+        self.use_local_chrome = use_local_chrome
+        self.chrome_path = chrome_path
+        self.debugging_port = debugging_port
+        self.logger = logging.getLogger("index.agent_session")
         
         browser_config = None
 
@@ -46,11 +76,26 @@ class AgentSession:
                 self.storage_state = json.load(f)
                 console.print("[green]Loaded existing browser state[/green]")
 
-                browser_config = BrowserConfig(
-                    storage_state=self.storage_state
-                )
+                if use_local_chrome:
+                    # Launch Chrome and connect to it
+                    self._launch_local_chrome()
+                    # we ignore the storage state for local chrome
+                    browser_config = BrowserConfig(
+                        cdp_url="http://localhost:" + str(self.debugging_port),
+                    )
+                else:
+                    browser_config = BrowserConfig(
+                        storage_state=self.storage_state
+                    )
         else:
-            browser_config = BrowserConfig()
+            if use_local_chrome:
+                # Launch Chrome and connect to it
+                self._launch_local_chrome()
+                browser_config = BrowserConfig(
+                    cdp_url="http://localhost:" + str(self.debugging_port),
+                )
+            else:
+                browser_config = BrowserConfig()
 
         self.agent = Agent(llm=self.llm, browser_config=browser_config)
         self.agent_state: Optional[str] = None
@@ -58,6 +103,25 @@ class AgentSession:
         self.action_results: List[Dict] = []
         self.is_running: bool = False
         self.storage_state: Optional[Dict] = None
+    
+    def _launch_local_chrome(self):
+        """Launch a local Chrome instance with remote debugging enabled"""
+        console.print(f"[blue]Launching Chrome from {self.chrome_path} with debugging port {self.debugging_port}[/blue]")
+        
+        try:
+            self.chrome_process = subprocess.Popen(
+                [self.chrome_path, f"--remote-debugging-port={self.debugging_port}", "--no-first-run", "--no-default-browser-check"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            console.print("[green]Chrome launched successfully[/green]")
+            self.logger.info(f"Chrome process started with PID {self.chrome_process.pid}")
+            # Give Chrome time to start up
+            time.sleep(2)
+        except Exception as e:
+            self.logger.error(f"Failed to launch Chrome: {str(e)}")
+            console.print(f"[red]Failed to launch Chrome: {str(e)}[/red]")
+            raise
         
     def save_state(self, agent_output: AgentOutput):
         """Save agent state to file"""
@@ -66,11 +130,13 @@ class AgentSession:
             with open(BROWSER_STATE_FILE, "w") as f:
                 json.dump(agent_output.storage_state, f)
                 
-        console.print("[green]Saved agent state[/green]")
+            self.logger.info("Agent state saved to file")
+            console.print("[green]Saved agent state[/green]")
     
     async def run_agent(self, prompt: str) -> AgentOutput:
         """Run the agent with the given prompt"""
         self.is_running = True
+        self.logger.info(f"Running agent with prompt: {prompt}")
         
         try:
             # Run the agent
@@ -97,6 +163,7 @@ class AgentSession:
     async def stream_run(self, prompt: str):
         """Run the agent with streaming output"""
         self.is_running = True
+        self.logger.info(f"Running agent with streaming and prompt: {prompt}")
         
         try:
             # Run the agent with streaming
@@ -138,7 +205,22 @@ class AgentSession:
         self.agent_state = None
         self.step_count = 0
         self.action_results = []
+        self.logger.info("Agent state reset")
         console.print("[yellow]Agent state reset[/yellow]")
+    
+    async def close(self):
+        """Close the agent and any associated resources"""
+        # Close the browser instance
+        if self.agent and self.agent.browser:
+            self.logger.info("Closing browser instance")
+            await self.agent.browser.close()
+        
+        # Terminate Chrome process if launched locally
+        if self.chrome_process:
+            self.logger.info(f"Terminating Chrome process with PID {self.chrome_process.pid}")
+            console.print("[yellow]Terminating local Chrome instance...[/yellow]")
+            self.chrome_process.terminate()
+            self.chrome_process = None
 
 
 class AgentUI(App):
@@ -230,7 +312,7 @@ class AgentUI(App):
         ("ctrl+s", "send", "Send Message"),
     ]
     
-    agent_session = AgentSession()
+    agent_session = None
     status = reactive("Ready")
     
     def compose(self):
@@ -343,30 +425,71 @@ class AgentUI(App):
         finally:
             self.update_output()
     
+    async def on_mount(self):
+        """Called when the app is mounted"""
+        # Register cleanup handler
+        self.set_interval(0.1, self._check_exit)
+    
+    async def _check_exit(self):
+        """Check if app is exiting and clean up resources"""
+        if self.exiting:
+            if self.agent_session:
+                await self.agent_session.close()
+    
     def action_quit(self):
         """Quit the application"""
         self.exit()
 
 
 @app.command()
-def run(prompt: str = typer.Option(None, "--prompt", "-p", help="Initial prompt to send to the agent")):
+def run(
+    prompt: str = typer.Option(None, "--prompt", "-p", help="Initial prompt to send to the agent"),
+    use_local_chrome: bool = typer.Option(False, "--local-chrome", help="Use local Chrome instance instead of launching a new browser"),
+    chrome_path: str = typer.Option(DEFAULT_CHROME_PATH, "--chrome-path", help="Path to Chrome executable"),
+    debugging_port: int = typer.Option(DEFAULT_DEBUGGING_PORT, "--port", help="Remote debugging port for Chrome"),
+    debug: bool = typer.Option(False, "--debug", help="Enable debug logging")
+):
     """
     Launch the interactive loop for the Index browser agent
     """
-    asyncio.run(_interactive_loop(initial_prompt=prompt))
+    # Set up logging if debug mode is enabled
+    setup_logging(debug)
+    
+    asyncio.run(_interactive_loop(
+        initial_prompt=prompt, 
+        use_local_chrome=use_local_chrome, 
+        chrome_path=chrome_path, 
+        debugging_port=debugging_port,
+        debug=debug
+    ))
 
 
 @app.command(name="ui")
-def run_ui(prompt: str = typer.Option(None, "--prompt", "-p", help="Initial prompt to send to the agent")):
+def run_ui(
+    prompt: str = typer.Option(None, "--prompt", "-p", help="Initial prompt to send to the agent"),
+    use_local_chrome: bool = typer.Option(False, "--local-chrome", help="Use local Chrome instance instead of launching a new browser"),
+    chrome_path: str = typer.Option(DEFAULT_CHROME_PATH, "--chrome-path", help="Path to Chrome executable"),
+    debugging_port: int = typer.Option(DEFAULT_DEBUGGING_PORT, "--port", help="Remote debugging port for Chrome"),
+    debug: bool = typer.Option(False, "--debug", help="Enable debug logging")
+):
     """
     Launch the graphical UI for the Index browser agent
     """
+    # Set up logging if debug mode is enabled
+    setup_logging(debug)
+    
     # Select model and check API key
     llm_provider = select_model_and_check_key()
     
     # Initialize UI with the selected LLM provider
     agent_ui = AgentUI()
-    agent_ui.agent_session = AgentSession(llm=llm_provider)
+    agent_ui.agent_session = AgentSession(
+        llm=llm_provider,
+        use_local_chrome=use_local_chrome,
+        chrome_path=chrome_path,
+        debugging_port=debugging_port,
+        debug=debug
+    )
     
     if prompt:
         # If a prompt is provided, we'll send it once the UI is ready
@@ -489,7 +612,7 @@ def select_model_and_check_key():
     return create_llm_provider(provider, model)
 
 
-async def _interactive_loop(initial_prompt: str = None):
+async def _interactive_loop(initial_prompt: str = None, use_local_chrome: bool = False, chrome_path: str = DEFAULT_CHROME_PATH, debugging_port: int = DEFAULT_DEBUGGING_PORT, debug: bool = False):
     """Implementation of the interactive loop mode"""
     # Display welcome panel
     console.print(Panel.fit(
@@ -504,7 +627,13 @@ async def _interactive_loop(initial_prompt: str = None):
     llm_provider = select_model_and_check_key()
     
     # Create agent session with selected provider
-    session = AgentSession(llm=llm_provider)
+    session = AgentSession(
+        llm=llm_provider,
+        use_local_chrome=use_local_chrome,
+        chrome_path=chrome_path,
+        debugging_port=debugging_port,
+        debug=debug
+    )
     
     try:
         first_message = True
@@ -588,7 +717,7 @@ async def _interactive_loop(initial_prompt: str = None):
     except KeyboardInterrupt:
         console.print("\n[yellow]Exiting interactive mode...[/]")
         # Close the browser before exiting
-        await session.agent.browser.close()
+        await session.close()
 
 
 def main():

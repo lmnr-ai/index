@@ -2,11 +2,11 @@ import base64
 import logging
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, List
+from typing import List
 
 from PIL import Image, ImageDraw, ImageFont
 
-from index.browser.models import InteractiveElement
+from index.browser.models import InteractiveElement, Rect
 
 logger = logging.getLogger(__name__)
 
@@ -48,13 +48,13 @@ def put_highlight_elements_on_screenshot(elements: dict[int, InteractiveElement]
             g = max(0, min(255, g + offset_g))
             b = max(0, min(255, b + offset_b))
             
-            return (r, g, b)
+            return (r, g, b) 
         
         # Load custom font from the package
         try:
             # Path to your packaged font
             font_path = Path(__file__).parent / "fonts" / "OpenSans-Medium.ttf"
-            font = ImageFont.truetype(str(font_path), 14)
+            font = ImageFont.truetype(str(font_path), 11)
         except Exception as e:
             logger.warning(f"Could not load custom font: {e}, falling back to default")
             font = ImageFont.load_default()
@@ -67,11 +67,12 @@ def put_highlight_elements_on_screenshot(elements: dict[int, InteractiveElement]
 
             base_color = base_colors[idx % len(base_colors)]
             color = generate_unique_color(base_color, idx)
-            rect = element.viewport
+            
+            rect = element.rect
             
             # Draw rectangle
             draw.rectangle(
-                [(rect.x, rect.y), (rect.x + rect.width, rect.y + rect.height)],
+                [(rect.left, rect.top), (rect.right, rect.bottom)],
                 outline=color,
                 width=2
             )
@@ -85,17 +86,16 @@ def put_highlight_elements_on_screenshot(elements: dict[int, InteractiveElement]
             text_height = text_bbox[3] - text_bbox[1]
             
             # Make label size exactly proportional for better aesthetics
-            # Square labels look better for single digits as seen in the example image
-            label_width = text_width + 6
-            label_height = text_height + 6
+            label_width = text_width + 4
+            label_height = text_height + 4
             
             # Positioning logic
             if label_width > rect.width or label_height > rect.height:
-                label_x = rect.x + rect.width
-                label_y = rect.y
+                label_x = rect.left + rect.width
+                label_y = rect.top
             else:
-                label_x = rect.x + rect.width - label_width
-                label_y = rect.y
+                label_x = rect.left + rect.width - label_width
+                label_y = rect.top
             
             # Check for overlaps with existing labels
             label_rect = {
@@ -200,7 +200,7 @@ def scale_b64_image(image_b64: str, scale_factor: float) -> str:
         return image_b64
 
 
-def calculate_iou(rect1: Dict, rect2: Dict) -> float:
+def calculate_iou(rect1: Rect, rect2: Rect) -> float:
     """
     Calculate Intersection over Union between two rectangles.
     
@@ -212,18 +212,18 @@ def calculate_iou(rect1: Dict, rect2: Dict) -> float:
         IoU value
     """
     # Calculate intersection
-    intersect_left = max(rect1["left"], rect2["left"])
-    intersect_top = max(rect1["top"], rect2["top"])
-    intersect_right = min(rect1["right"], rect2["right"])
-    intersect_bottom = min(rect1["bottom"], rect2["bottom"])
+    intersect_left = max(rect1.left, rect2.left)
+    intersect_top = max(rect1.top, rect2.top)
+    intersect_right = min(rect1.right, rect2.right)
+    intersect_bottom = min(rect1.bottom, rect2.bottom)
     
     # Check if intersection exists
     if intersect_right < intersect_left or intersect_bottom < intersect_top:
         return 0.0  # No intersection
     
     # Calculate area of each rectangle
-    area1 = (rect1["right"] - rect1["left"]) * (rect1["bottom"] - rect1["top"])
-    area2 = (rect2["right"] - rect2["left"]) * (rect2["bottom"] - rect2["top"])
+    area1 = (rect1.right - rect1.left) * (rect1.bottom - rect1.top)
+    area2 = (rect2.right - rect2.left) * (rect2.bottom - rect2.top)
     
     # Calculate area of intersection
     intersection_area = (intersect_right - intersect_left) * (intersect_bottom - intersect_top)
@@ -235,7 +235,7 @@ def calculate_iou(rect1: Dict, rect2: Dict) -> float:
     return intersection_area / union_area if union_area > 0 else 0.0
 
 
-def is_fully_contained(rect1: Dict, rect2: Dict) -> bool:
+def is_fully_contained(rect1: Rect, rect2: Rect) -> bool:
     """
     Check if rect1 is fully contained within rect2.
     
@@ -246,10 +246,10 @@ def is_fully_contained(rect1: Dict, rect2: Dict) -> bool:
     Returns:
         True if rect1 is fully contained within rect2
     """
-    return (rect1["left"] >= rect2["left"] and
-            rect1["right"] <= rect2["right"] and
-            rect1["top"] >= rect2["top"] and
-            rect1["bottom"] <= rect2["bottom"])
+    return (rect1.left >= rect2.left and
+            rect1.right <= rect2.right and
+            rect1.top >= rect2.top and
+            rect1.bottom <= rect2.bottom)
 
 
 def filter_overlapping_elements(elements: List[InteractiveElement], iou_threshold: float = 0.7) -> List[InteractiveElement]:
@@ -268,7 +268,7 @@ def filter_overlapping_elements(elements: List[InteractiveElement], iou_threshol
         
     # Sort by area (descending), then by weight (descending)
     elements.sort(key=lambda e: (
-        -(e.rect["width"] * e.rect["height"]),  # Negative area for descending sort
+        -(e.rect.width * e.rect.height),  # Negative area for descending sort
         -e.weight  # Negative weight for descending sort
     ))
     
@@ -293,7 +293,7 @@ def filter_overlapping_elements(elements: List[InteractiveElement], iou_threshol
                     break
                 else:
                     # If current element has higher weight and is more than 50% of the size of the existing element, remove the existing element
-                    if current.rect["width"] * current.rect["height"] >= existing.rect["width"] * existing.rect["height"] * 0.5:
+                    if current.rect.width * current.rect.height >= existing.rect.width * existing.rect.height * 0.5:
                         filtered_elements.remove(existing)
                         break
         
@@ -324,7 +324,7 @@ def sort_elements_by_position(elements: List[InteractiveElement]) -> List[Intera
     current_row = []
     
     # Copy and sort elements by Y position
-    sorted_by_y = sorted(elements, key=lambda e: e.rect["top"])
+    sorted_by_y = sorted(elements, key=lambda e: e.rect.top)
     
     # Group into rows
     for element in sorted_by_y:
@@ -334,7 +334,7 @@ def sort_elements_by_position(elements: List[InteractiveElement]) -> List[Intera
         else:
             # Check if this element is in the same row as the previous ones
             last_element = current_row[-1]
-            if abs(element.rect["top"] - last_element.rect["top"]) <= ROW_THRESHOLD:
+            if abs(element.rect.top - last_element.rect.top) <= ROW_THRESHOLD:
                 # Same row
                 current_row.append(element)
             else:
@@ -348,7 +348,7 @@ def sort_elements_by_position(elements: List[InteractiveElement]) -> List[Intera
     
     # Sort each row by X position (left to right)
     for row in rows:
-        row.sort(key=lambda e: e.rect["left"])
+        row.sort(key=lambda e: e.rect.left)
     
     # Flatten the rows back into a single array
     elements = [element for row in rows for element in row]

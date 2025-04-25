@@ -11,7 +11,6 @@ Index is the SOTA open-source browser agent for autonomously executing complex t
     - [x] Claude 3.7 Sonnet with extended thinking (reliable and accurate)
     - [x] OpenAI o4-mini (depending on the reasoning effort, provides good balance between speed, cost and accuracy)
     - [x] Gemini 2.5 Flash (really fast, cheap, and good for less complex tasks)
-
 - [x] `pip install lmnr-index` and use it in your project
 - [x] `index run` to run the agent in the interactive CLI
 - [x] Index is also available as a [serverless API.](https://docs.lmnr.ai/laminar-index/introduction)
@@ -21,6 +20,10 @@ Index is the SOTA open-source browser agent for autonomously executing complex t
 prompt: go to ycombinator.com. summarize first 3 companies in the W25 batch and make new spreadsheet in google sheets.
 
 https://github.com/user-attachments/assets/2b46ee20-81b6-4188-92fb-4d97fe0b3d6a
+
+## Documentation
+
+Check out full documentation [here](https://docs.lmnr.ai/index-agent/getting-started)
 
 ## Index API
 
@@ -33,25 +36,23 @@ pip install lmnr
 
 ### Use Index via API
 ```python
-from lmnr import Laminar, AsyncLaminarClient
+from lmnr import Laminar, LaminarClient
 # you can also set LMNR_PROJECT_API_KEY environment variable
 
 # Initialize tracing
 Laminar.initialize(project_api_key="your_api_key")
 
 # Initialize the client
-client = AsyncLaminarClient(api_key="your_api_key")
+client = LaminarClient(project_api_key="your_api_key")
 
-async def main():
-
-    response = await client.agent.run(
-        prompt="Navigate to news.ycombinator.com, find a post about AI, and summarize it"
-    )
-
-    print(response.result)
+for chunk in client.agent.run(
+    stream=True,
+    model_provider="gemini",
+    model="gemini-2.5-pro-preview-03-25",
+    prompt="Navigate to news.ycombinator.com, find a post about AI, and summarize it"
+):
+    print(chunk)
     
-if __name__ == "__main__":
-    asyncio.run(main())
 ```
 ## Local Quick Start
 
@@ -114,6 +115,52 @@ Step 4: Scrolling back up to view pricing tiers
 Step 5: Provided concise summary of the three pricing tiers
 ```
 
+### Running with a personal Chrome instance
+
+You can use Index with personal Chrome browser instance instead of launching a new browser. Main advantage is that all existing logged in sessions will be available.
+
+```bash
+# Basic usage with default Chrome path
+index run --local-chrome
+
+# With custom Chrome path and debugging port
+index run --local-chrome --chrome-path="/path/to/chrome" --port=9223
+```
+
+This will launch Chrome with remote debugging enabled and connect Index to it.
+
+#### OS-specific Chrome paths
+
+Default Chrome executable paths on different operating systems:
+
+**macOS**:
+```bash
+index run --local-chrome --chrome-path="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+```
+
+**Windows**:
+```bash
+index run --local-chrome --chrome-path="C:\Program Files\Google\Chrome\Application\chrome.exe"
+```
+
+#### Connecting to an already running Chrome instance
+
+If you already have Chrome running with remote debugging enabled, you can connect to it:
+
+1. Launch Chrome with debugging enabled:
+   ```bash
+   # macOS
+   /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+   
+   # Windows
+   "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
+   ```
+
+2. Then run Index with the same port:
+   ```bash
+   index run --local-chrome --port=9222
+   ```
+
 ### Run the agent with code
 ```python
 import asyncio
@@ -172,6 +219,31 @@ async def main():
     # Configure browser to connect to an existing Chrome DevTools Protocol endpoint
     browser_config = BrowserConfig(
         cdp_url="<cdp_url>"
+    )
+    
+    llm = AnthropicProvider(model="claude-3-7-sonnet-20250219", enable_thinking=True, thinking_token_budget=2048)
+    
+    agent = Agent(llm=llm, browser_config=browser_config)
+    
+    output = await agent.run(
+        prompt="Navigate to news.ycombinator.com and find the top story"
+    )
+    
+    print(output.result)
+    
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Run with local Chrome instance (programmatically)
+```python
+import asyncio
+from index import Agent, AnthropicProvider, BrowserConfig
+
+async def main():
+    # Configure browser to connect to a local Chrome instance
+    browser_config = BrowserConfig(
+        cdp_url="http://localhost:9222"
     )
     
     llm = AnthropicProvider(model="claude-3-7-sonnet-20250219", enable_thinking=True, thinking_token_budget=2048)
