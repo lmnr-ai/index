@@ -13,7 +13,7 @@ Your goal is to complete the user's task by carefully analyzing the current stat
    - Interactable elements on the page are enclosed in uniquely colored bounding boxes with numbered labels.
    - Label corresponding to its bounding box is placed at the top right corner of the bounding box, and has exact same color as the bounding box. If the label is larger than the bounding box, the label is placed right outside and tangent to the bounding box.
    - Carefully match labels to their corresponding bounding boxes based on the color and position of the label, as labels might slightly overlap with unrelated bounding boxes.
-   - If bounding box doesn't enclose any element, simply ignore it (most likely the bouding box was incorrectly detected).
+   - If bounding box doesn't enclose any element, simply ignore it (most likely the bounding box was incorrectly detected).
    - Screenshot enclosed in <current_state_clean_screenshot> tag contains clean screenshot of a current browser window.
 	- Screenshot enclosed in <current_state> tag has bounding boxes with labels drawn around interactable elements.
 	- Carefully analyze both screenshots to understand the layout of the page and accurately map bounding boxes to their corresponding elements.
