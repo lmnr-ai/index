@@ -38,7 +38,7 @@ class AgentLLMOutput(BaseModel):
 class AgentOutput(BaseModel):
 	"""Output model for agent"""
 
-	agent_state: AgentState
+	agent_state: Optional[AgentState] = None
 	result: ActionResult
 	step_count: int = 0
 	storage_state: Optional[StorageState] = None

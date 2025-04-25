@@ -170,6 +170,8 @@ class Agent:
 			   	parent_span_context: Optional[LaminarSpanContext] = None, 		
 			   	close_context: bool = True,
 			   	session_id: str | None = None,
+			   	return_agent_state: bool = False,
+			   	return_storage_state: bool = False,
 	) -> AgentOutput:
 		"""Execute the task with maximum number of steps and return the final result
 		
@@ -177,9 +179,11 @@ class Agent:
 			prompt: The prompt to execute the task with
 			max_steps: The maximum number of steps to execute the task with
 			agent_state: The state of the agent to execute the task with
-			parent_span_context: The parent span context to execute the task with
-			close_context: Whether to close the context after the task is executed
-			session_id: The session id to execute the task with
+			parent_span_context: Parent span context in Laminar format to execute the task with
+			close_context: Whether to close the browser context after the task is executed
+			session_id: Agent session id
+			return_agent_state: Whether to return the agent state with the final output
+			return_storage_state: Whether to return the storage state with the final output
 		"""
 
 		if prompt is None and agent_state is None:
@@ -232,9 +236,9 @@ class Agent:
 				span.set_attribute("lmnr.span.output", result.model_dump_json())
 
 				return AgentOutput(
-					agent_state=self.get_state(),
+					agent_state=self.get_state() if return_agent_state else None,
 					result=result,
-					storage_state=storage_state,
+					storage_state=storage_state if return_storage_state else None,
 					step_count=step,
 					trace_id=trace_id,
 				)
@@ -248,9 +252,23 @@ class Agent:
 						timeout: Optional[int] = None,
 						session_id: str | None = None,
 						return_screenshots: bool = False,
+						return_agent_state: bool = False,
+						return_storage_state: bool = False,
 						) -> AsyncGenerator[AgentStreamChunk, None]:
-		"""Execute the task with maximum number of steps and stream results as they happen"""
+		"""Execute the task with maximum number of steps and stream step chunks as they happen
 		
+		Args:
+			prompt: The prompt to execute the task with
+			max_steps: The maximum number of steps to execute the task with
+			agent_state: The state of the agent to execute the task with
+			parent_span_context: Parent span context in Laminar format to execute the task with
+			close_context: Whether to close the browser context after the task is executed
+			timeout: The timeout for the task
+			session_id: Agent session id
+			return_screenshots: Whether to return screenshots with the step chunks
+			return_agent_state: Whether to return the agent state with the final output chunk
+			return_storage_state: Whether to return the storage state with the final output chunk
+		"""
 		if prompt is None and agent_state is None:
 			raise ValueError("Either prompt or agent_state must be provided")
 		
@@ -303,7 +321,7 @@ class Agent:
 										action_result=result, 
 										summary=summary, 
 										step=step, 
-										agent_state=self.get_state(), 
+										agent_state=self.get_state() if return_agent_state else None, 
 										screenshot=screenshot,
 										trace_id=trace_id
 										)
@@ -326,9 +344,9 @@ class Agent:
 
 					# Yield the final output as a chunk
 					final_output = AgentOutput(
-						agent_state=self.get_state(),
+						agent_state=self.get_state() if return_agent_state else None,
 						result=result,
-						storage_state=storage_state,
+						storage_state=storage_state if return_storage_state else None,
 						step_count=step,
 						trace_id=trace_id,
 					)
