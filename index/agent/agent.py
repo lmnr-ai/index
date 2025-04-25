@@ -171,7 +171,7 @@ class Agent:
 
 	async def run(self, 
 			   	prompt: str,
-			   	max_steps: int | None = 100,
+			   	max_steps: int = 100,
 				agent_state: str | None = None,
 			   	parent_span_context: Optional[LaminarSpanContext] = None, 		
 			   	close_context: bool = True,
@@ -184,7 +184,7 @@ class Agent:
 		
 		Args:
 			prompt: The prompt to execute the task with
-			max_steps: Optional, the maximum number of steps to execute the task with. Defaults to 100.
+			max_steps: The maximum number of steps to execute the task with. Defaults to 100.
 			agent_state: Optional, the state of the agent to execute the task with
 			parent_span_context: Optional, parent span context in Laminar format to execute the task with
 			close_context: Whether to close the browser context after the task is executed
