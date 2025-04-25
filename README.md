@@ -11,7 +11,6 @@ Index is the SOTA open-source browser agent for autonomously executing complex t
     - [x] Claude 3.7 Sonnet with extended thinking (reliable and accurate)
     - [x] OpenAI o4-mini (depending on the reasoning effort, provides good balance between speed, cost and accuracy)
     - [x] Gemini 2.5 Flash (really fast, cheap, and good for less complex tasks)
-
 - [x] `pip install lmnr-index` and use it in your project
 - [x] `index run` to run the agent in the interactive CLI
 - [x] Index is also available as a [serverless API.](https://docs.lmnr.ai/laminar-index/introduction)
@@ -21,6 +20,10 @@ Index is the SOTA open-source browser agent for autonomously executing complex t
 prompt: go to ycombinator.com. summarize first 3 companies in the W25 batch and make new spreadsheet in google sheets.
 
 https://github.com/user-attachments/assets/2b46ee20-81b6-4188-92fb-4d97fe0b3d6a
+
+## Documentation
+
+Check out full documentation [here](https://docs.lmnr.ai/index-agent/getting-started)
 
 ## Index API
 
@@ -33,25 +36,23 @@ pip install lmnr
 
 ### Use Index via API
 ```python
-from lmnr import Laminar, AsyncLaminarClient
+from lmnr import Laminar, LaminarClient
 # you can also set LMNR_PROJECT_API_KEY environment variable
 
 # Initialize tracing
 Laminar.initialize(project_api_key="your_api_key")
 
 # Initialize the client
-client = AsyncLaminarClient(api_key="your_api_key")
+client = LaminarClient(project_api_key="your_api_key")
 
-async def main():
-
-    response = await client.agent.run(
-        prompt="Navigate to news.ycombinator.com, find a post about AI, and summarize it"
-    )
-
-    print(response.result)
+for chunk in client.agent.run(
+    stream=True,
+    model_provider="gemini",
+    model="gemini-2.5-pro-preview-03-25"
+    prompt="Navigate to news.ycombinator.com, find a post about AI, and summarize it"
+):
+    print(chunk)
     
-if __name__ == "__main__":
-    asyncio.run(main())
 ```
 ## Local Quick Start
 
