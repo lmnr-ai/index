@@ -19,6 +19,14 @@ class Coordinates(BaseModel):
 	width: Optional[int] = None
 	height: Optional[int] = None
 
+class Rect(BaseModel):
+	left: int
+	top: int
+	right: int
+	bottom: int
+	width: int
+	height: int
+
 class InteractiveElement(BaseModel):
 	"""Represents an interactive element on the page"""
 	model_config = ConfigDict(
@@ -37,8 +45,7 @@ class InteractiveElement(BaseModel):
 	weight: float
 	browser_agent_id: str
 	input_type: Optional[str] = field(default=None)
-	rect: dict[str, int]
-	scaled_rect: Coordinates
+	rect: Rect
 	z_index: int
 
 class BrowserError(Exception):

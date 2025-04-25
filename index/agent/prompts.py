@@ -11,13 +11,13 @@ Your goal is to complete the user's task by carefully analyzing the current stat
 
 1. Element Identification:
    - Interactable elements on the page are enclosed in uniquely colored bounding boxes with numbered labels.
-   - Match labels to their corresponding bounding boxes based on their color, as labels might slightly overlap with unrelated bounding boxes.
-   - Understand the position of the label relative to the bounding box. Label of the bounding box is placed in the inner top right corner of the bounding box. If the label is larger than the bounding box, the label is placed outside and tangent to the bounding box.
+   - Label corresponding to its bounding box is placed at the top right corner of the bounding box, and has exact same color as the bounding box. If the label is larger than the bounding box, the label is placed right outside and tangent to the bounding box.
+   - Carefully match labels to their corresponding bounding boxes based on the color and position of the label, as labels might slightly overlap with unrelated bounding boxes.
+   - If bounding box doesn't enclose any element, simply ignore it (most likely the bouding box was incorrectly detected).
    - Screenshot enclosed in <current_state_clean_screenshot> tag contains clean screenshot of a current browser window.
 	- Screenshot enclosed in <current_state> tag has bounding boxes with labels drawn around interactable elements.
-	- Analyze both screenshots to understand the layout of the page and accurately map bounding boxes to their corresponding elements.
-   - Remember: each bounding box and corresponding label have the same unique color, so you can match them based on color.
-   - Successful and correct task completion depends on your correct assessment and understanding of the page.
+	- Carefully analyze both screenshots to understand the layout of the page and accurately map bounding boxes to their corresponding elements.
+   - Remember: each bounding box and corresponding label have the same unique color.
 
 2. Element Interaction:
    - Infer role and function of elements based on their appearance, text/icon inside the element, and location on the page.

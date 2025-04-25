@@ -577,8 +577,10 @@
             // scaledRect is for coordinates scaled to 1024 width
             const scaleFactor = 1024 / window.innerWidth
             const scaledRect = {
-                x: Math.round(rect.left * scaleFactor),
-                y: Math.round(rect.top * scaleFactor),
+                left: Math.round(rect.left * scaleFactor),
+                top: Math.round(rect.top * scaleFactor),
+                right: Math.round(rect.right * scaleFactor),
+                bottom: Math.round(rect.bottom * scaleFactor),
                 width: Math.round(rect.width * scaleFactor),
                 height: Math.round(rect.height * scaleFactor),
             }
@@ -608,15 +610,7 @@
                     x: Math.round(rect.left + rect.width/2),
                     y: Math.round(rect.top + rect.height/2)
                 },
-                rect: {
-                    left: Math.round(rect.left),
-                    top: Math.round(rect.top),
-                    right: Math.round(rect.right),
-                    bottom: Math.round(rect.bottom),
-                    width: Math.round(rect.width),
-                    height: Math.round(rect.height)
-                },
-                scaledRect: scaledRect,
+                rect: scaledRect,
                 zIndex: item.zIndex
             };
             
