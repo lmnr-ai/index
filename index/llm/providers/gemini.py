@@ -1,17 +1,29 @@
+import logging
 import os
 from typing import List, Optional
 
+import backoff
 from google import genai
 
 from ..llm import BaseLLMProvider, LLMResponse, Message
 
-
+logger = logging.getLogger(__name__)
 class GeminiProvider(BaseLLMProvider):
     def __init__(self, model: str, thinking_token_budget: int = 8192):
         super().__init__(model=model)
         self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
         self.thinking_token_budget = thinking_token_budget
 
+
+    @backoff.on_exception(
+        backoff.constant,  # constant backoff
+        Exception,     # retry on any exception
+        max_tries=3,   # stop after 3 attempts
+        interval=0.5,
+        on_backoff=lambda details: logger.info(
+            f"API error, retrying in {details['wait']:.2f} seconds... (attempt {details['tries']})"
+        ),
+    )
     async def call(
         self,
         messages: List[Message],
