@@ -278,27 +278,11 @@ class Browser:
 			self.playwright_browser = None
 			self.playwright = None
 	
-	async def navigate_to(self, url: str):
+	async def goto(self, url: str):
 		"""Navigate to a URL"""
 		page = await self.get_current_page()
 		await page.goto(url, wait_until='domcontentloaded')
-
-	async def refresh_page(self):
-		"""Refresh the current page"""
-		page = await self.get_current_page()
-		await page.reload()
-		await page.wait_for_load_state()
-
-	async def go_forward(self):
-		"""Navigate forward in history"""
-		page = await self.get_current_page()
-			
-		try:
-			await page.go_forward(timeout=10, wait_until='domcontentloaded')
-		except Exception as e:
-			logger.debug(f'During go_forward: {e}')
-
-
+		await asyncio.sleep(2)
 	
 	async def get_tabs_info(self) -> list[TabInfo]:
 		"""Get information about all tabs"""
