@@ -151,7 +151,7 @@ class Agent:
 		except ValidationError as e:
 			raise ValueError(f"Could not parse response: {str(e)}\nResponse was: {json_str}")
 
-	async def _setup_messages(self, prompt: str | None = None, agent_state: str | None = None):
+	async def _setup_messages(self, prompt: str, agent_state: str | None = None, start_url: str | None = None):
 		"""Set up messages based on state dict or initialize with system message"""
 		if agent_state:
 			# assuming that the structure of the state.messages is correct
@@ -163,8 +163,14 @@ class Agent:
 		else:
 			self.message_manager.add_system_message_and_user_prompt(prompt)
 
+			if start_url:
+				await self.browser.goto(start_url)
+				browser_state = await self.browser.update_state()
+				self.message_manager.add_current_state_message(browser_state)
+				
+
 	async def run(self, 
-			   	prompt: str | None = None,
+			   	prompt: str,
 			   	max_steps: int = 100,
 				agent_state: str | None = None,
 			   	parent_span_context: Optional[LaminarSpanContext] = None, 		
@@ -172,18 +178,20 @@ class Agent:
 			   	session_id: str | None = None,
 			   	return_agent_state: bool = False,
 			   	return_storage_state: bool = False,
+			   	start_url: str | None = None,
 	) -> AgentOutput:
 		"""Execute the task with maximum number of steps and return the final result
 		
 		Args:
 			prompt: The prompt to execute the task with
-			max_steps: The maximum number of steps to execute the task with
-			agent_state: The state of the agent to execute the task with
-			parent_span_context: Parent span context in Laminar format to execute the task with
+			max_steps: The maximum number of steps to execute the task with. Defaults to 100.
+			agent_state: Optional, the state of the agent to execute the task with
+			parent_span_context: Optional, parent span context in Laminar format to execute the task with
 			close_context: Whether to close the browser context after the task is executed
-			session_id: Agent session id
+			session_id: Optional, Agent session id
 			return_agent_state: Whether to return the agent state with the final output
 			return_storage_state: Whether to return the storage state with the final output
+			start_url: Optional, the URL to start the task with
 		"""
 
 		if prompt is None and agent_state is None:
@@ -201,7 +209,7 @@ class Agent:
 			if session_id is not None:
 				span.set_attribute("lmnr.internal.agent_session_id", session_id)
 			
-			await self._setup_messages(prompt, agent_state)
+			await self._setup_messages(prompt, agent_state, start_url)
 
 			step = 0
 			result = None
@@ -244,7 +252,7 @@ class Agent:
 				)
 
 	async def run_stream(self, 
-						prompt: str | None = None,
+						prompt: str,
 						max_steps: int = 100, 
 						agent_state: str | None = None,
 						parent_span_context: Optional[LaminarSpanContext] = None,
@@ -254,6 +262,7 @@ class Agent:
 						return_screenshots: bool = False,
 						return_agent_state: bool = False,
 						return_storage_state: bool = False,
+						start_url: str | None = None,
 						) -> AsyncGenerator[AgentStreamChunk, None]:
 		"""Execute the task with maximum number of steps and stream step chunks as they happen
 		
@@ -268,9 +277,8 @@ class Agent:
 			return_screenshots: Whether to return screenshots with the step chunks
 			return_agent_state: Whether to return the agent state with the final output chunk
 			return_storage_state: Whether to return the storage state with the final output chunk
+			start_url: Optional, the URL to start the task with
 		"""
-		if prompt is None and agent_state is None:
-			raise ValueError("Either prompt or agent_state must be provided")
 		
 		# Create a span for the streaming execution
 		span = Laminar.start_span(
@@ -289,7 +297,7 @@ class Agent:
 			span.set_attribute("lmnr.internal.agent_session_id", session_id)
 		
 		with use_span(span):
-			await self._setup_messages(prompt, agent_state)
+			await self._setup_messages(prompt, agent_state, start_url)
 
 		step = 0
 		result = None
