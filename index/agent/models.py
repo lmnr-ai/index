@@ -64,7 +64,6 @@ class TimeoutChunkContent(BaseModel):
 	summary: str
 	step: int
 	agent_state: AgentState
-	step_parent_span_context: Optional[str]
 	trace_id: str | None = None
 	screenshot: Optional[str] = None
 

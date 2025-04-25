@@ -169,7 +169,6 @@ class Agent:
 				agent_state: str | None = None,
 			   	parent_span_context: Optional[LaminarSpanContext] = None, 		
 			   	close_context: bool = True,
-			   	prev_action_result: ActionResult | None = None,
 			   	session_id: str | None = None,
 	) -> AgentOutput:
 		"""Execute the task with maximum number of steps and return the final result
@@ -180,7 +179,6 @@ class Agent:
 			agent_state: The state of the agent to execute the task with
 			parent_span_context: The parent span context to execute the task with
 			close_context: Whether to close the context after the task is executed
-			prev_action_result: The previous action result to execute the task with
 			session_id: The session id to execute the task with
 		"""
 
@@ -202,7 +200,7 @@ class Agent:
 			await self._setup_messages(prompt, agent_state)
 
 			step = 0
-			result = prev_action_result
+			result = None
 			is_done = False
 
 			trace_id = str(uuid.UUID(int=span.get_span_context().trace_id))
@@ -231,6 +229,8 @@ class Agent:
 					# Update to close the browser directly
 					await self.browser.close()
 
+				span.set_attribute("lmnr.span.output", result.model_dump_json())
+
 				return AgentOutput(
 					agent_state=self.get_state(),
 					result=result,
@@ -245,9 +245,6 @@ class Agent:
 						agent_state: str | None = None,
 						parent_span_context: Optional[LaminarSpanContext] = None,
 						close_context: bool = True,
-						prev_action_result: ActionResult | None = None,
-						prev_step: int | None = None,
-						step_span_context: Optional[LaminarSpanContext] = None,
 						timeout: Optional[int] = None,
 						session_id: str | None = None,
 						return_screenshots: bool = False,
@@ -257,39 +254,27 @@ class Agent:
 		if prompt is None and agent_state is None:
 			raise ValueError("Either prompt or agent_state must be provided")
 		
-		if prev_step is not None and (prev_action_result is None or prev_step == 0 or agent_state is None):
-			raise ValueError("`prev_action_result` and `agent_state` must be provided if `prev_step` is provided")
-
 		# Create a span for the streaming execution
-		span = None
-		if step_span_context is None:
-			span = Laminar.start_span(
-				name="agent.run_stream",
-				parent_span_context=parent_span_context,
-				input={
-					"prompt": prompt,
-					"max_steps": max_steps,
-					"stream": True,
-				},
-			)
+		span = Laminar.start_span(
+			name="agent.run_stream",
+			parent_span_context=parent_span_context,
+			input={
+				"prompt": prompt,
+				"max_steps": max_steps,
+				"stream": True,
+			},
+		)
 
-
-		if span is not None:
-			trace_id = str(uuid.UUID(int=span.get_span_context().trace_id))
-			
-			if session_id is not None:
-				span.set_attribute("lmnr.internal.agent_session_id", session_id)
-
-		elif step_span_context is not None:
-			trace_id = str(step_span_context.trace_id)
-		else:
-			trace_id = None
+		trace_id = str(uuid.UUID(int=span.get_span_context().trace_id))
+		
+		if session_id is not None:
+			span.set_attribute("lmnr.internal.agent_session_id", session_id)
 		
 		with use_span(span):
 			await self._setup_messages(prompt, agent_state)
 
-		step = prev_step if prev_step is not None else 0
-		result = prev_action_result
+		step = 0
+		result = None
 		is_done = False
 
 		if timeout is not None:
@@ -300,11 +285,9 @@ class Agent:
 			while not is_done and step < max_steps:
 				logger.info(f'📍 Step {step}')
 
-				if step_span_context is not None:
-					result, summary = await self.step(step, result, step_span_context)
-				else:
-					with use_span(span):
-						result, summary = await self.step(step, result)
+				with use_span(span):
+					result, summary = await self.step(step, result)
+
 				step += 1
 				is_done = result.is_done
 
@@ -314,21 +297,15 @@ class Agent:
 					screenshot = state.screenshot
 
 				if timeout is not None and time.time() - start_time > timeout:
-					if span is not None:
-						ctx = Laminar.serialize_span_context(span)
-					else:
-						# if span is None, it implies that we're using the step_span_context
-						ctx = step_span_context.model_dump_json()
-
+					
 					yield TimeoutChunk(
 							content=TimeoutChunkContent(
 										action_result=result, 
 										summary=summary, 
 										step=step, 
 										agent_state=self.get_state(), 
-										step_parent_span_context=ctx, 
-										trace_id=trace_id,
-										screenshot=screenshot
+										screenshot=screenshot,
+										trace_id=trace_id
 										)
 					)
 					return
@@ -356,6 +333,7 @@ class Agent:
 						trace_id=trace_id,
 					)
 
+					span.set_attribute("lmnr.span.output", result.model_dump_json())
 					yield FinalOutputChunk(content=final_output)
 
 					break
@@ -366,23 +344,17 @@ class Agent:
 			
 		except Exception as e:
 			logger.info(f'❌ Error in run: {e}')
-			if span is not None:
-				span.record_exception(e)
+			span.record_exception(e)
 			
 			yield StepChunkError(content=f'Error in run stream: {e}')
 		finally:
-			# Clean up resources
-			try:
-			
-				if close_context:
-					# Update to close the browser directly
-					await self.browser.close()
+			# Clean up resources		
+			if close_context:
+				# Update to close the browser directly
+				await self.browser.close()
 
-			finally:
-				if span is not None:
-					span.end()
-				
-				logger.info('Stream complete, span closed')
+			span.end()
+			logger.info('Stream complete, span closed')
 
 	def get_state(self) -> AgentState:
 
