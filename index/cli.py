@@ -7,6 +7,7 @@ import subprocess
 import time
 from typing import Dict, List, Optional
 
+import requests
 import typer
 from dotenv import load_dotenv
 from rich.console import Console
@@ -71,22 +72,17 @@ class AgentSession:
         
         browser_config = None
 
-        if os.path.exists(BROWSER_STATE_FILE):
+        if os.path.exists(BROWSER_STATE_FILE) and not use_local_chrome:
             with open(BROWSER_STATE_FILE, "r") as f:
                 self.storage_state = json.load(f)
                 console.print("[green]Loaded existing browser state[/green]")
-
-                if use_local_chrome:
-                    # Launch Chrome and connect to it
-                    self._launch_local_chrome()
-                    # we ignore the storage state for local chrome
-                    browser_config = BrowserConfig(
-                        cdp_url="http://localhost:" + str(self.debugging_port),
-                    )
-                else:
-                    browser_config = BrowserConfig(
-                        storage_state=self.storage_state
-                    )
+                browser_config = BrowserConfig(
+                    storage_state=self.storage_state,
+                    viewport_size={
+                        "width": 1200,
+                        "height": 800
+                    }
+                )
         else:
             if use_local_chrome:
                 # Launch Chrome and connect to it
@@ -95,7 +91,12 @@ class AgentSession:
                     cdp_url="http://localhost:" + str(self.debugging_port),
                 )
             else:
-                browser_config = BrowserConfig()
+                browser_config = BrowserConfig(
+                    viewport_size={
+                        "width": 1200,
+                        "height": 800
+                    }
+                )
 
         self.agent = Agent(llm=self.llm, browser_config=browser_config)
         self.agent_state: Optional[str] = None
@@ -106,6 +107,17 @@ class AgentSession:
     
     def _launch_local_chrome(self):
         """Launch a local Chrome instance with remote debugging enabled"""
+        # Check if Chrome is already running with the specified debugging port
+        try:
+            response = requests.get(f"http://localhost:{self.debugging_port}/json/version", timeout=2)
+            if response.status_code == 200:
+                console.print(f"[green]Connected to already running Chrome instance on port {self.debugging_port}[/green]")
+                self.logger.info(f"Connected to existing Chrome instance on port {self.debugging_port}")
+                return
+        except requests.RequestException:
+            # No running Chrome instance found on the specified port, proceed with launching a new one
+            pass
+            
         console.print(f"[blue]Launching Chrome from {self.chrome_path} with debugging port {self.debugging_port}[/blue]")
         
         try:
@@ -144,12 +156,16 @@ class AgentSession:
                 result = await self.agent.run(
                     prompt=prompt, 
                     agent_state=self.agent_state, 
-                    close_context=False
+                    close_context=False,
+                    return_storage_state=True,
+                    return_agent_state=True
                 )
             else:
                 result = await self.agent.run(
                     prompt=prompt,
-                    close_context=False
+                    close_context=False,
+                    return_storage_state=True,
+                    return_agent_state=True
                 )
             
             self.step_count = result.step_count
@@ -172,13 +188,17 @@ class AgentSession:
                     prompt=prompt, 
                     agent_state=self.agent_state, 
                     close_context=False,
-                    max_steps=500 # large number to allow the agent to run for a long time
+                    max_steps=500, # large number to allow the agent to run for a long time
+                    return_agent_state=True,
+                    return_storage_state=True
                 )
             else:
                 stream = self.agent.run_stream(
                     prompt=prompt,
                     close_context=False,
-                    max_steps=500 # large number to allow the agent to run for a long time
+                    max_steps=500, # large number to allow the agent to run for a long time
+                    return_agent_state=True,
+                    return_storage_state=True
                 )
             
             final_output = None
