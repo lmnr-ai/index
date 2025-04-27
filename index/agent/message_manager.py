@@ -45,7 +45,7 @@ class MessageManager:
 		if output_model:
 			output_model_str = """
 
-When you are ready to call `done` action, strictly provide output in the following JSON format. Infer which fields best match to the information you have gathered.
+When you are ready to complete the task and call `done` action, strictly provide output as a string in the following JSON format. Infer which fields that best match the information you have gathered.
 """
 			if isinstance(output_model, type) and issubclass(output_model, BaseModel):
 				output_model_str += json.dumps(simplified_model_schema(output_model), indent=2)
