@@ -11,12 +11,17 @@ from index.browser.browser import Browser
 
 logger = logging.getLogger(__name__)
 
-def register_default_actions(controller, output_model=None):
+def register_default_actions(controller):
     """Register all default browser actions to the provided controller"""
 
-    @controller.action('Complete task')
-    async def done(text: str):
-        return ActionResult(is_done=True, content=text)
+    @controller.action()
+    async def done(output: str):
+        """Use this action when you have completed the task.
+        
+        Args:
+            output: Output of the task.
+        """
+        return ActionResult(is_done=True, content=output)
 
     @controller.action()
     async def give_human_control(message: str, browser: Browser):

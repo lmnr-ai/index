@@ -3,10 +3,9 @@ import json
 import logging
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, Type, get_type_hints
+from typing import Any, Callable, Dict, get_type_hints
 
 from lmnr import Laminar
-from pydantic import BaseModel
 
 from index.agent.models import ActionModel, ActionResult
 from index.browser.browser import Browser
@@ -27,17 +26,10 @@ class Action:
 class Controller:
     """Controller for browser actions with integrated registry functionality"""
     
-    def __init__(
-        self,
-        exclude_actions: List[str] = None,
-        output_model: Optional[Type[BaseModel]] = None,
-    ):
-        self.exclude_actions = exclude_actions or []
-        self.output_model = output_model
+    def __init__(self):
         self._actions: Dict[str, Action] = {}
-        
         # Register default actions
-        register_default_actions(self, self.output_model)
+        register_default_actions(self)
 
     def action(self, description: str = None):
         """
@@ -48,8 +40,6 @@ class Controller:
                         If not provided, uses the function's docstring.
         """
         def decorator(func: Callable) -> Callable:
-            if func.__name__ in self.exclude_actions:
-                return func
 
             # Use provided description or function docstring
             action_description = description
