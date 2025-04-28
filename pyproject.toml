@@ -27,6 +27,7 @@ dependencies = [
     "textual>=0.50.1",
     "typer>=0.9.0",
     "google-genai>=1.11.0",
+    "docstring-parser>=0.16",
 ]
 
 [project.scripts]

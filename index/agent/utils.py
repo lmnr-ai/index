@@ -1,4 +1,5 @@
 import base64
+import enum
 import importlib.resources
 import logging
 from typing import Any, Dict, Type
@@ -30,35 +31,47 @@ def load_demo_image_as_b64(image_name: str) -> str:
         logger.error(f"Error loading demo image {image_name}: {e}")
         raise
 
-def simplified_model_schema(model_class: Type[BaseModel]) -> Dict[str, Any]:
+def pydantic_to_custom_jtd(model_class: Type[BaseModel]) -> Dict[str, Any]:
     """
-    Generate a simplified schema that maps field names to their types.
-    
-    Args:
-        model_class: Pydantic BaseModel class
-        
-    Returns:
-        Dictionary mapping field names to their type representations
+    Convert a Pydantic model class to a custom JSON Typedef-like schema
+    where each key is mapped to {type: ..., required: ...}
     """
-    schema = {}
-    for field_name, field_info in model_class.model_fields.items():
-        # Get the field type
-        if hasattr(field_info.annotation, "__origin__") and field_info.annotation.__origin__ is list:
-            # Handle List[Something]
-            inner_type = field_info.annotation.__args__[0]
-            if hasattr(inner_type, "mro") and BaseModel in inner_type.mro():
-                # Recursive handling for List[SomeModel]
-                schema[field_name] = [simplified_model_schema(inner_type)]
-            else:
-                # Simple List[primitive]
-                type_name = getattr(inner_type, "__name__", str(inner_type))
-                schema[field_name] = f"List[{type_name}]"
-        elif hasattr(field_info.annotation, "mro") and BaseModel in field_info.annotation.mro():
-            # Recursive handling for nested models
-            schema[field_name] = simplified_model_schema(field_info.annotation)
+    def python_type_to_jtd_type(annotation):
+        if annotation is str:
+            return "string"
+        elif annotation is int:
+            return "int32"
+        elif annotation is float:
+            return "float64"
+        elif annotation is bool:
+            return "boolean"
+        elif isinstance(annotation, type) and issubclass(annotation, enum.Enum):
+            values = [e.value for e in annotation]
+            return {"enum": values}
         else:
-            # Simple types
-            type_name = getattr(field_info.annotation, "__name__", str(field_info.annotation))
-            schema[field_name] = type_name
-    
+            return "string"  # fallback
+
+    schema = {}
+    for name, field in model_class.model_fields.items():
+        annotation = field.annotation
+        origin = getattr(annotation, "__origin__", None)
+        if origin is list:
+            inner = annotation.__args__[0]
+            if isinstance(inner, type) and issubclass(inner, enum.Enum):
+                enum_values = [e.value for e in inner]
+                field_type = {"array": {"enum": enum_values}}
+            elif hasattr(inner, "mro") and BaseModel in inner.mro():
+                field_type = f"array<{pydantic_to_custom_jtd(inner)}>"
+            else:
+                field_type = f"array<{python_type_to_jtd_type(inner)}>"
+        elif isinstance(annotation, type) and issubclass(annotation, enum.Enum):
+            field_type = {"enum": [e.value for e in annotation]}
+        elif hasattr(annotation, "mro") and BaseModel in annotation.mro():
+            field_type = pydantic_to_custom_jtd(annotation)
+        else:
+            field_type = python_type_to_jtd_type(annotation)
+        schema[name] = {
+            "type": field_type,
+            "required": field.is_required()
+        }
     return schema

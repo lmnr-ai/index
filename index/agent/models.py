@@ -17,7 +17,7 @@ class ActionResult(BaseModel):
 	"""Result of executing an action"""
 
 	is_done: Optional[bool] = False
-	content: Optional[str] = None
+	content: Optional[str | Dict[str, Any]] = None
 	error: Optional[str] = None
 	give_control: Optional[bool] = False
 

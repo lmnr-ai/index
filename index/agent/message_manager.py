@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from index.agent.models import ActionResult, AgentLLMOutput
 from index.agent.prompts import system_message
-from index.agent.utils import load_demo_image_as_b64, simplified_model_schema
+from index.agent.utils import load_demo_image_as_b64, pydantic_to_custom_jtd
 from index.browser.models import BrowserState
 from index.browser.utils import scale_b64_image
 from index.llm.llm import ImageContent, Message, TextContent
@@ -43,14 +43,20 @@ class MessageManager:
 		self._messages.append(system_msg)
 		output_model_str = ''
 		if output_model:
-			output_model_str = """
-
-When you are ready to complete the task and call `done` action, strictly provide output as a string in the following JSON format. Infer which fields that best match the information you have gathered.
-"""
+			output_format = ''
 			if isinstance(output_model, type) and issubclass(output_model, BaseModel):
-				output_model_str += json.dumps(simplified_model_schema(output_model), indent=2)
+				output_format = json.dumps(pydantic_to_custom_jtd(output_model), indent=2)
 			elif isinstance(output_model, str):
-				output_model_str += output_model
+				output_format = output_model
+
+			output_model_str = f"""
+
+When you are ready to complete the task use `done_with_structured_output` action. Strictly provide output in the following JSON format and infer which fields best match the information you have gathered:
+
+<output_model>
+{output_format}
+</output_model>
+"""
 
 		self._messages.append(Message(
 			role="user",

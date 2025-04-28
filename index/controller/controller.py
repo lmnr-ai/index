@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from functools import wraps
 from typing import Any, Callable, Dict, get_type_hints
 
+from docstring_parser import parse
 from lmnr import Laminar
 
 from index.agent.models import ActionModel, ActionResult
@@ -115,11 +116,20 @@ class Controller:
 
     def get_action_descriptions(self) -> str:
         """Return a dictionary of all registered actions and their metadata"""
+        
         action_info = []
         
         for name, action in self._actions.items():
             sig = inspect.signature(action.function)
             type_hints = get_type_hints(action.function)
+            
+            # Extract parameter descriptions using docstring_parser
+            param_descriptions = {}
+            docstring = inspect.getdoc(action.function)
+            if docstring:
+                parsed_docstring = parse(docstring)
+                for param in parsed_docstring.params:
+                    param_descriptions[param.arg_name] = param.description
             
             # Build parameter info
             params = {}
@@ -131,11 +141,19 @@ class Controller:
                 
                 params[param_name] = {
                     'type': param_type,
+                    'description': param_descriptions.get(param_name, '')
                 }
+            
+            # Use short description from docstring when available
+            description = action.description
+            if docstring:
+                parsed_docstring = parse(docstring)
+                if parsed_docstring.short_description:
+                    description = parsed_docstring.short_description
             
             action_info.append(json.dumps({
                 'name': name,
-                'description': action.description,
+                'description': description,
                 'parameters': params
             }, indent=2))
         
