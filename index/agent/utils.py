@@ -34,44 +34,61 @@ def load_demo_image_as_b64(image_name: str) -> str:
 def pydantic_to_custom_jtd(model_class: Type[BaseModel]) -> Dict[str, Any]:
     """
     Convert a Pydantic model class to a custom JSON Typedef-like schema
-    where each key is mapped to {type: ..., required: ...}
+    with proper array and object handling.
     """
     def python_type_to_jtd_type(annotation):
         if annotation is str:
-            return "string"
+            return {"type": "string"}
         elif annotation is int:
-            return "int32"
+            return {"type": "int32"}
         elif annotation is float:
-            return "float64"
+            return {"type": "float64"}
         elif annotation is bool:
-            return "boolean"
+            return {"type": "boolean"}
         elif isinstance(annotation, type) and issubclass(annotation, enum.Enum):
             values = [e.value for e in annotation]
-            return {"enum": values}
+            return {"type": "string", "enum": values}
         else:
-            return "string"  # fallback
+            return {"type": "string"}  # fallback
 
-    schema = {}
-    for name, field in model_class.model_fields.items():
-        annotation = field.annotation
-        origin = getattr(annotation, "__origin__", None)
-        if origin is list:
-            inner = annotation.__args__[0]
-            if isinstance(inner, type) and issubclass(inner, enum.Enum):
-                enum_values = [e.value for e in inner]
-                field_type = {"array": {"enum": enum_values}}
-            elif hasattr(inner, "mro") and BaseModel in inner.mro():
-                field_type = f"array<{pydantic_to_custom_jtd(inner)}>"
-            else:
-                field_type = f"array<{python_type_to_jtd_type(inner)}>"
-        elif isinstance(annotation, type) and issubclass(annotation, enum.Enum):
-            field_type = {"enum": [e.value for e in annotation]}
-        elif hasattr(annotation, "mro") and BaseModel in annotation.mro():
-            field_type = pydantic_to_custom_jtd(annotation)
-        else:
-            field_type = python_type_to_jtd_type(annotation)
-        schema[name] = {
-            "type": field_type,
-            "required": field.is_required()
+    def process_model(model):
+        model_schema = {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": False
         }
-    return schema
+        
+        for name, field in model.model_fields.items():
+            annotation = field.annotation
+            origin = getattr(annotation, "__origin__", None)
+            
+            if origin is list:
+                inner = annotation.__args__[0]
+                if isinstance(inner, type) and issubclass(inner, enum.Enum):
+                    item_schema = {"type": "string", "enum": [e.value for e in inner]}
+                elif hasattr(inner, "mro") and BaseModel in inner.mro():
+                    item_schema = process_model(inner)
+                else:
+                    item_schema = python_type_to_jtd_type(inner)
+                
+                model_schema["properties"][name] = {
+                    "type": "array",
+                    "items": item_schema
+                }
+            elif isinstance(annotation, type) and issubclass(annotation, enum.Enum):
+                model_schema["properties"][name] = {
+                    "type": "string", 
+                    "enum": [e.value for e in annotation]
+                }
+            elif hasattr(annotation, "mro") and BaseModel in annotation.mro():
+                model_schema["properties"][name] = process_model(annotation)
+            else:
+                model_schema["properties"][name] = python_type_to_jtd_type(annotation)
+            
+            if field.is_required():
+                model_schema["required"].append(name)
+                
+        return model_schema
+    
+    return process_model(model_class)
