@@ -20,7 +20,6 @@ async def run_agent(data: Dict[str, Any]):
     output_model = data.get("output_model")
     start_url = data.get("start_url")
     
-    # Here we would normally initialize your LLM provider
     llm = GeminiProvider(model="gemini-2.5-pro-preview-03-25")
     
     agent = Agent(llm=llm)
@@ -30,7 +29,6 @@ async def run_agent(data: Dict[str, Any]):
         start_url=start_url
     )
     
-    # Return the result.content from the AgentOutput
     return output.result.content
 
 
@@ -84,5 +82,6 @@ evaluate(
     data=data,
     executor=run_agent,
     evaluators={"accuracy": eval_extraction},
+    concurrency_limit=1,
     group_name="country_extraction",
 )
