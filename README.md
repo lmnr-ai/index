@@ -1,6 +1,8 @@
+<a href="https://github.com/lmnr-ai/index">![GitHub stars](https://img.shields.io/github/stars/lmnr-ai/index?style=social)</a>
 <a href="https://www.ycombinator.com/companies/laminar-ai">![Static Badge](https://img.shields.io/badge/Y%20Combinator-S24-orange)</a>
 <a href="https://x.com/lmnrai">![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/lmnrai)</a>
 <a href="https://discord.gg/nNFUUDAKub"> ![Static Badge](https://img.shields.io/badge/Join_Discord-464646?&logo=discord&logoColor=5865F2) </a>
+
 
 # Index
 
@@ -39,8 +41,8 @@ playwright install chromium
 
 Setup your model API keys in `.env` file in your project root:
 ```
-ANTHROPIC_API_KEY=
 GEMINI_API_KEY=
+ANTHROPIC_API_KEY=
 OPENAI_API_KEY=
 ```
 
