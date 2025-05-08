@@ -35,7 +35,8 @@ index = "index.cli:main"
 
 [tool.uv]
 dev-dependencies = [
-    "pytest>=8.3.3"
+    "pytest>=8.3.3",
+    "pytest-asyncio"
 ]
 
 [project.license]
