@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import json
 import logging
-import re
 import time
 import uuid
 from typing import AsyncGenerator, Optional
 
 from dotenv import load_dotenv
 from lmnr import Laminar, LaminarSpanContext, observe, use_span
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from index.agent.message_manager import MessageManager
 from index.agent.models import (
@@ -25,6 +23,7 @@ from index.agent.models import (
 	TimeoutChunk,
 	TimeoutChunkContent,
 )
+from index.agent.utils import validate_json
 from index.browser.browser import Browser, BrowserConfig
 from index.controller.controller import Controller
 from index.llm.llm import BaseLLMProvider, Message
@@ -106,39 +105,9 @@ class Agent:
 
 		response = await self.llm.call(input_messages)
 		
-		# Extract content between <output> tags using regex, including variations like <output_32>
-		pattern = r"<output(?:[^>]*)>(.*?)</output(?:[^>]*)>"
-		match = re.search(pattern, response.content, re.DOTALL)
-		
-		json_str = ""
-
-		if not match:
-			# if we couldn't find the <output> tags, it most likely means the <output*> tag is not present in the response
-			# remove closing and opening tags just in case
-			closing_tag_pattern = r"</output(?:[^>]*)>"
-			json_str = re.sub(closing_tag_pattern, "", response.content).strip()
-
-			open_tag_pattern = r"<output(?:[^>]*)>"
-			json_str = re.sub(open_tag_pattern, "", json_str).strip()
-
-			json_str = json_str.replace("```json", "").replace("```", "").strip()
-
-		else:
-			# Extract just the content between the tags without any additional replacement
-			json_str = match.group(1).strip()
-			
 		try:
-			# First try to parse it directly to catch any obvious JSON issues
-			try:
-				json.loads(json_str)
-			except json.JSONDecodeError:
-				# If direct parsing fails, attempt to fix common issues
-				# Remove escape characters and control characters (0x00-0x1F) that might cause problems
-				json_str = json_str.replace('\\n', '\n').replace('\\r', '\r').replace('\\t', '\t')
-				# Clean all control characters (0x00-0x1F) except valid JSON whitespace (\n, \r, \t)
-				json_str = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', json_str)
-				
-			output = AgentLLMOutput.model_validate_json(json_str.strip())
+			# Pass the raw LLM response content to validate_json
+			output = await validate_json(response.content, self.llm)
 			
 			logger.info(f'💡 Thought: {output.thought}')
 			logger.info(f'💡 Summary: {output.summary}')
@@ -148,8 +117,10 @@ class Agent:
 				output.thinking_block = response.thinking
 
 			return output
-		except ValidationError as e:
-			raise ValueError(f"Could not parse response: {str(e)}\nResponse was: {json_str}")
+		except ValueError as e:
+			# Re-raise the ValueError from validate_json, which now includes detailed context
+			logger.error(f"Failed to generate and validate action after multiple retries: {e}")
+			raise e
 
 	async def _setup_messages(self, 
 							prompt: str, 

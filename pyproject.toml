@@ -10,7 +10,7 @@ packages = ["index"]
 
 [project]
 name = "lmnr-index"
-version = "0.1.10"
+version = "0.1.11"
 description = "Index - SOTA browser AI agent for autonomous task execution on the web"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -35,7 +35,8 @@ index = "index.cli:main"
 
 [tool.uv]
 dev-dependencies = [
-    "pytest>=8.3.3"
+    "pytest>=8.3.3",
+    "pytest-asyncio"
 ]
 
 [project.license]
