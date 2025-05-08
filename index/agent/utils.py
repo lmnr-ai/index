@@ -99,16 +99,13 @@ def pydantic_to_custom_jtd(model_class: Type[BaseModel]) -> Dict[str, Any]:
 
 
 async def generate_proper_json(llm: BaseLLMProvider, json_str: str) -> str:
-    """
-    Generate a proper JSON string from a given JSON string.
-    """
-    prompt = f"""
-    The following JSON string is malformed or has issues. Please correct it while preserving the original structure and content as much as possible.
-    Return ONLY the corrected JSON string, without any surrounding text, comments, or markdown. Do not add any explanations.
 
-    Problematic JSON string:
-    {json_str}
-    """
+    prompt = f"""The following JSON string is malformed or has issues. Please correct it while preserving the original structure and content as much as possible.
+Return ONLY the corrected JSON string, without any surrounding text, comments, or markdown. Do not add any explanations.
+
+Problematic JSON string:
+{json_str}
+"""
 
     input_messages = [
         Message(role="user", content=prompt)

@@ -32,21 +32,26 @@ class GeminiProvider(BaseLLMProvider):
         **kwargs
     ) -> LLMResponse:
         
-        if len(messages) < 2 or messages[0].role != "system":
-            raise ValueError("System message is required and length of messages must be at least 2")
-
-        system = messages[0].content[0].text
-        gemini_messages = [msg.to_gemini_format() for msg in messages[1:]]
+        if len(messages) == 0:
+            raise ValueError("Messages must be non-empty")
         
         config = {
             "temperature": temperature,
             "thinking_config": {
                 "thinking_budget": self.thinking_token_budget
             },
-            "system_instruction": {
+        }
+        
+        if messages[0].role == "system":
+            system = messages[0].content[0].text
+            gemini_messages = [msg.to_gemini_format() for msg in messages[1:]]
+
+            config["system_instruction"] = {
                 "text": system
             }
-        }
+        else:
+            gemini_messages = [msg.to_gemini_format() for msg in messages]
+        
         
         if max_tokens:
             config["max_output_tokens"] = max_tokens

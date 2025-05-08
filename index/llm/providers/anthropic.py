@@ -38,20 +38,29 @@ class AnthropicProvider(BaseLLMProvider):
     ) -> LLMResponse:
         # Make a copy of messages to prevent modifying the original list during retries
         messages_copy = messages.copy()
+
+        if not messages_copy:
+            raise ValueError("Messages list cannot be empty.")
+
+        conversation_messages_input: List[Message] = []
+
+        system = []
+
+        if messages_copy[0].role == "system":
+            system = messages_copy[0].content[0].text
+            conversation_messages_input = messages_copy[1:]
+        else:
+            conversation_messages_input = messages_copy
         
-        if len(messages_copy) < 2 or messages_copy[0].role != "system":
-            raise ValueError("System message is required for Anthropic and length of messages must be at least 2")
-
-        system_message = messages_copy[0]
-
+        anthropic_api_messages = [msg.to_anthropic_format() for msg in conversation_messages_input]
+        
         if self.enable_thinking:
 
             try:
                 response = await self.client.messages.create(
                     model=self.model,
-                    system=system_message.to_anthropic_format()["content"],
-                    messages=[msg.to_anthropic_format() for msg in messages_copy[1:]],
-                    temperature=1,
+                    system=system,
+                    messages=anthropic_api_messages,
                     thinking={
                         "type": "enabled",
                         "budget_tokens": self.thinking_token_budget,
@@ -61,8 +70,11 @@ class AnthropicProvider(BaseLLMProvider):
                 )
             except Exception as e:
                 logger.error(f"Error calling Anthropic: {str(e)}")
+                # Fallback to anthropic_bedrock with the original messages_copy
                 response = await self.anthropic_bedrock.call(
-                    messages_copy,
+                    messages_copy, # Pass original messages_copy, bedrock provider has its own logic
+                    temperature=temperature, # Pass original temperature
+                    max_tokens=max_tokens,   # Pass original max_tokens
                     **kwargs
                 )
 
@@ -72,13 +84,13 @@ class AnthropicProvider(BaseLLMProvider):
                 usage=response.usage.model_dump(),
                 thinking=ThinkingBlock(thinking=response.content[0].thinking, signature=response.content[0].signature)
             )
-        else:
+        else: # Not enable_thinking
             response = await self.client.messages.create(
                 model=self.model,
-                messages=[msg.to_anthropic_format() for msg in messages_copy[1:]],
-                temperature=temperature,
-                max_tokens=max_tokens,
-                system=system_message.to_anthropic_format()["content"],
+                messages=anthropic_api_messages,
+                temperature=temperature, # Use adjusted temperature
+                max_tokens=max_tokens, # Use adjusted max_tokens
+                system=system,
                 **kwargs
             )
      
