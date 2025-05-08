@@ -15,6 +15,7 @@ Index is a state-of-the-art open-source browser agent that autonomously executes
     - [x] Gemini 2.5 Flash (really fast, cheap, and good for less complex tasks)
 - [x] `pip install lmnr-index` and use it in your project
 - [x] `index run` to run the agent in the interactive CLI
+- [x] Supports structured output via Pydantic schemas for reliable data extraction.
 - [x] Index is also available as a [serverless API.](https://docs.lmnr.ai/index-agent/api/getting-started)
 - [x] You can also try out Index via [Chat UI](https://lmnr.ai/chat).
 - [x] Supports advanced [browser agent observability](https://docs.lmnr.ai/index-agent/tracing) powered by open-source platform [Laminar](https://github.com/lmnr-ai/lmnr).
@@ -31,7 +32,7 @@ Check out full documentation [here](https://docs.lmnr.ai/index-agent/getting-sta
 
 ### Install dependencies
 ```bash
-pip install lmnr-index
+pip install lmnr-index 'lmnr[all]'
 
 # Install playwright
 playwright install chromium
@@ -44,23 +45,40 @@ Setup your model API keys in `.env` file in your project root:
 GEMINI_API_KEY=
 ANTHROPIC_API_KEY=
 OPENAI_API_KEY=
+# Optional, to trace the agent's actions and record browser session
+LMNR_PROJECT_API_KEY=
 ```
 
 ### Run Index with code
 ```python
 import asyncio
 from index import Agent, GeminiProvider
+from pydantic import BaseModel
+from lmnr import Laminar
+import os
+
+# to trace the agent's actions and record browser session
+Laminar.initialize()
+
+# Define Pydantic schema for structured output
+class NewsSummary(BaseModel):
+    title: str
+    summary: str
 
 async def main():
 
-    llm = GeminiProvider(model="gemini-2.5-pro-preview-03-25")
+    llm = GeminiProvider(model="gemini-2.5-pro-preview-05-06")
     agent = Agent(llm=llm)
 
+    # Example of getting structured output
     output = await agent.run(
-        prompt="Navigate to news.ycombinator.com, find a post about AI, and summarize it"
+        prompt="Navigate to news.ycombinator.com, find a post about AI, extract its title and provide a concise summary.",
+        output_model=NewsSummary
     )
     
-    print(output.result)
+    summary = NewsSummary.model_validate(output.result.content)
+    print(f"Title: {summary.title}")
+    print(f"Summary: {summary.summary}")
     
 if __name__ == "__main__":
     asyncio.run(main())
@@ -139,7 +157,7 @@ client = LaminarClient(project_api_key="your_api_key")
 for chunk in client.agent.run(
     stream=True,
     model_provider="gemini",
-    model="gemini-2.5-pro-preview-03-25",
+    model="gemini-2.5-pro-preview-05-06",
     prompt="Navigate to news.ycombinator.com, find a post about AI, and summarize it"
 ):
     print(chunk)
