@@ -9,7 +9,7 @@ from typing import AsyncGenerator, Optional
 
 from dotenv import load_dotenv
 from lmnr import Laminar, LaminarSpanContext, observe, use_span
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from index.agent.message_manager import MessageManager
 from index.agent.models import (
@@ -151,7 +151,12 @@ class Agent:
 		except ValidationError as e:
 			raise ValueError(f"Could not parse response: {str(e)}\nResponse was: {json_str}")
 
-	async def _setup_messages(self, prompt: str, agent_state: str | None = None, start_url: str | None = None):
+	async def _setup_messages(self, 
+							prompt: str, 
+							agent_state: str | None = None, 
+							start_url: str | None = None,
+							output_model: BaseModel | str | None = None
+							):
 		"""Set up messages based on state dict or initialize with system message"""
 		if agent_state:
 			# assuming that the structure of the state.messages is correct
@@ -161,7 +166,7 @@ class Agent:
 			browser_state = await self.browser.update_state()
 			self.message_manager.add_current_state_message(browser_state, user_follow_up_message=prompt)
 		else:
-			self.message_manager.add_system_message_and_user_prompt(prompt)
+			self.message_manager.add_system_message_and_user_prompt(prompt, output_model)
 
 			if start_url:
 				await self.browser.goto(start_url)
@@ -179,6 +184,7 @@ class Agent:
 			   	return_agent_state: bool = False,
 			   	return_storage_state: bool = False,
 			   	start_url: str | None = None,
+			   	output_model: BaseModel | str | None = None
 	) -> AgentOutput:
 		"""Execute the task with maximum number of steps and return the final result
 		
@@ -192,6 +198,7 @@ class Agent:
 			return_agent_state: Whether to return the agent state with the final output
 			return_storage_state: Whether to return the storage state with the final output
 			start_url: Optional, the URL to start the task with
+			output_model: Optional, the output model to use for the task
 		"""
 
 		if prompt is None and agent_state is None:
@@ -209,7 +216,7 @@ class Agent:
 			if session_id is not None:
 				span.set_attribute("lmnr.internal.agent_session_id", session_id)
 			
-			await self._setup_messages(prompt, agent_state, start_url)
+			await self._setup_messages(prompt, agent_state, start_url, output_model)
 
 			step = 0
 			result = None
@@ -263,6 +270,7 @@ class Agent:
 						return_agent_state: bool = False,
 						return_storage_state: bool = False,
 						start_url: str | None = None,
+						output_model: BaseModel | str | None = None
 						) -> AsyncGenerator[AgentStreamChunk, None]:
 		"""Execute the task with maximum number of steps and stream step chunks as they happen
 		
@@ -278,6 +286,7 @@ class Agent:
 			return_agent_state: Whether to return the agent state with the final output chunk
 			return_storage_state: Whether to return the storage state with the final output chunk
 			start_url: Optional, the URL to start the task with
+			output_model: Optional, the output model to use for the task
 		"""
 		
 		# Create a span for the streaming execution
@@ -297,7 +306,7 @@ class Agent:
 			span.set_attribute("lmnr.internal.agent_session_id", session_id)
 		
 		with use_span(span):
-			await self._setup_messages(prompt, agent_state, start_url)
+			await self._setup_messages(prompt, agent_state, start_url, output_model)
 
 		step = 0
 		result = None
