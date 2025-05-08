@@ -1,10 +1,12 @@
+<a href="https://github.com/lmnr-ai/index">![GitHub stars](https://img.shields.io/github/stars/lmnr-ai/index?style=social)</a>
 <a href="https://www.ycombinator.com/companies/laminar-ai">![Static Badge](https://img.shields.io/badge/Y%20Combinator-S24-orange)</a>
 <a href="https://x.com/lmnrai">![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/lmnrai)</a>
 <a href="https://discord.gg/nNFUUDAKub"> ![Static Badge](https://img.shields.io/badge/Join_Discord-464646?&logo=discord&logoColor=5865F2) </a>
 
+
 # Index
 
-Index is the SOTA open-source browser agent for autonomously executing complex tasks on the web.
+Index is a state-of-the-art open-source browser agent that autonomously executes complex web tasks. It turns any website into an accessible API and can be seamlessly integrated with just a few lines of code.
 
 - [x] Powered by reasoning LLMs with vision capabilities.
     - [x] Gemini 2.5 Pro (really fast and accurate)
@@ -13,9 +15,10 @@ Index is the SOTA open-source browser agent for autonomously executing complex t
     - [x] Gemini 2.5 Flash (really fast, cheap, and good for less complex tasks)
 - [x] `pip install lmnr-index` and use it in your project
 - [x] `index run` to run the agent in the interactive CLI
-- [x] Index is also available as a [serverless API.](https://docs.lmnr.ai/laminar-index/introduction)
+- [x] Supports structured output via Pydantic schemas for reliable data extraction.
+- [x] Index is also available as a [serverless API.](https://docs.lmnr.ai/index-agent/api/getting-started)
 - [x] You can also try out Index via [Chat UI](https://lmnr.ai/chat).
-- [x] Supports advanced [browser agent observability](https://docs.lmnr.ai/laminar-index/observability) powered by open-source platform [Laminar](https://github.com/lmnr-ai/lmnr).
+- [x] Supports advanced [browser agent observability](https://docs.lmnr.ai/index-agent/tracing) powered by open-source platform [Laminar](https://github.com/lmnr-ai/lmnr).
 
 prompt: go to ycombinator.com. summarize first 3 companies in the W25 batch and make new spreadsheet in google sheets.
 
@@ -25,40 +28,11 @@ https://github.com/user-attachments/assets/2b46ee20-81b6-4188-92fb-4d97fe0b3d6a
 
 Check out full documentation [here](https://docs.lmnr.ai/index-agent/getting-started)
 
-## Index API
-
-The easiest way to use Index in production is via the [serverless API](https://docs.lmnr.ai/laminar-index/introduction). Index API manages remote browser sessions, agent infrastructure and [browser observability](https://docs.lmnr.ai/laminar-index/tracing). To get started, [sign up](https://lmnr.ai/sign-in) and create project API key. Read the [docs](https://docs.lmnr.ai/laminar-index/introduction) to learn more.
-
-### Install Laminar
-```bash
-pip install lmnr
-```
-
-### Use Index via API
-```python
-from lmnr import Laminar, LaminarClient
-# you can also set LMNR_PROJECT_API_KEY environment variable
-
-# Initialize tracing
-Laminar.initialize(project_api_key="your_api_key")
-
-# Initialize the client
-client = LaminarClient(project_api_key="your_api_key")
-
-for chunk in client.agent.run(
-    stream=True,
-    model_provider="gemini",
-    model="gemini-2.5-pro-preview-03-25",
-    prompt="Navigate to news.ycombinator.com, find a post about AI, and summarize it"
-):
-    print(chunk)
-    
-```
-## Local Quick Start
+## Quickstart
 
 ### Install dependencies
 ```bash
-pip install lmnr-index
+pip install lmnr-index 'lmnr[all]'
 
 # Install playwright
 playwright install chromium
@@ -68,21 +42,57 @@ playwright install chromium
 
 Setup your model API keys in `.env` file in your project root:
 ```
-ANTHROPIC_API_KEY=
 GEMINI_API_KEY=
+ANTHROPIC_API_KEY=
 OPENAI_API_KEY=
+# Optional, to trace the agent's actions and record browser session
+LMNR_PROJECT_API_KEY=
 ```
 
+### Run Index with code
+```python
+import asyncio
+from index import Agent, GeminiProvider
+from pydantic import BaseModel
+from lmnr import Laminar
+import os
 
-### Run the agent with CLI
+# to trace the agent's actions and record browser session
+Laminar.initialize()
 
-You can run Index via interactive CLI. It features:
+# Define Pydantic schema for structured output
+class NewsSummary(BaseModel):
+    title: str
+    summary: str
+
+async def main():
+
+    llm = GeminiProvider(model="gemini-2.5-pro-preview-05-06")
+    agent = Agent(llm=llm)
+
+    # Example of getting structured output
+    output = await agent.run(
+        prompt="Navigate to news.ycombinator.com, find a post about AI, extract its title and provide a concise summary.",
+        output_model=NewsSummary
+    )
+    
+    summary = NewsSummary.model_validate(output.result.content)
+    print(f"Title: {summary.title}")
+    print(f"Summary: {summary.summary}")
+    
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Run Index with CLI
+
+Index CLI features:
 - Browser state persistence between sessions
 - Follow-up messages with support for "give human control" action
 - Real-time streaming updates
 - Beautiful terminal UI using Textual
 
-You can run the agent with the following command. Remember to set API key for the selected model in the `.env` file.
+You can run Index CLI with the following command.
 ```bash
 index run
 ```
@@ -115,88 +125,49 @@ Step 4: Scrolling back up to view pricing tiers
 Step 5: Provided concise summary of the three pricing tiers
 ```
 
-### Running with a personal Chrome instance
+### Running CLI with a personal Chrome instance
 
-You can use Index with personal Chrome browser instance instead of launching a new browser. Main advantage is that all existing logged in sessions will be available.
+You can use Index with personal Chrome browser instance instead of launching a new browser. Main advantage is that all your existing logged-in sessions will be available.
 
 ```bash
 # Basic usage with default Chrome path
 index run --local-chrome
-
-# With custom Chrome path and debugging port
-index run --local-chrome --chrome-path="/path/to/chrome" --port=9223
 ```
 
-This will launch Chrome with remote debugging enabled and connect Index to it.
+## Use Index via API
 
-#### OS-specific Chrome paths
+The easiest way to use Index in production is with [serverless API](https://docs.lmnr.ai/index-agent/api/getting-started). Index API manages remote browser sessions, agent infrastructure and [browser observability](https://docs.lmnr.ai/index-agent/api/tracing). To get started, create a project API key in [Laminar](https://lmnr.ai).
 
-Default Chrome executable paths on different operating systems:
-
-**macOS**:
+### Install Laminar
 ```bash
-index run --local-chrome --chrome-path="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+pip install lmnr
 ```
 
-**Windows**:
-```bash
-index run --local-chrome --chrome-path="C:\Program Files\Google\Chrome\Application\chrome.exe"
-```
-
-#### Connecting to an already running Chrome instance
-
-If you already have Chrome running with remote debugging enabled, you can connect to it:
-
-1. Launch Chrome with debugging enabled:
-   ```bash
-   # macOS
-   /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
-   
-   # Windows
-   "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
-   ```
-
-2. Then run Index with the same port:
-   ```bash
-   index run --local-chrome --port=9222
-   ```
-
-### Run the agent with code
+### Use Index via API
 ```python
-import asyncio
-from index import Agent, AnthropicProvider
+from lmnr import Laminar, LaminarClient
+# you can also set LMNR_PROJECT_API_KEY environment variable
 
-async def main():
+# Initialize tracing
+Laminar.initialize(project_api_key="your_api_key")
 
-    llm = AnthropicProvider(
-            model="claude-3-7-sonnet-20250219",
-            enable_thinking=True, 
-            thinking_token_budget=2048)
-    # llm = OpenAIProvider(model="o4-mini") you can also use OpenAI models
+# Initialize the client
+client = LaminarClient(project_api_key="your_api_key")
 
-    agent = Agent(llm=llm)
-
-    output = await agent.run(
-        prompt="Navigate to news.ycombinator.com, find a post about AI, and summarize it"
-    )
-    
-    print(output.result)
-    
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-### Stream the agent's output
-```python
-async for chunk in agent.run_stream(
+for chunk in client.agent.run(
+    stream=True,
+    model_provider="gemini",
+    model="gemini-2.5-pro-preview-05-06",
     prompt="Navigate to news.ycombinator.com, find a post about AI, and summarize it"
 ):
     print(chunk)
-``` 
+    
+```
 
-### Enable browser agent observability
 
-To trace Index agent's actions and record browser session you simply need to initialize Laminar tracing before running the agent.
+## Browser agent observability
+
+Both code run and API run provide advanced browser observability. To trace Index agent's actions and record browser session you simply need to initialize Laminar tracing before running the agent.
 
 ```python
 from lmnr import Laminar
@@ -204,86 +175,11 @@ from lmnr import Laminar
 Laminar.initialize(project_api_key="your_api_key")
 ```
 
-Then you will get full observability on the agent's actions synced with the browser session in the Laminar platform.
+Then you will get full observability on the agent's actions synced with the browser session in the Laminar platform. Learn more about browser agent observability in the [documentation](https://docs.lmnr.ai/index-agent/tracing).
 
 <picture>
     <img src="./static/traces.png" alt="Index observability" width="800"/>
 </picture>
-
-### Run with remote CDP url
-```python
-import asyncio
-from index import Agent, AnthropicProvider, BrowserConfig
-
-async def main():
-    # Configure browser to connect to an existing Chrome DevTools Protocol endpoint
-    browser_config = BrowserConfig(
-        cdp_url="<cdp_url>"
-    )
-    
-    llm = AnthropicProvider(model="claude-3-7-sonnet-20250219", enable_thinking=True, thinking_token_budget=2048)
-    
-    agent = Agent(llm=llm, browser_config=browser_config)
-    
-    output = await agent.run(
-        prompt="Navigate to news.ycombinator.com and find the top story"
-    )
-    
-    print(output.result)
-    
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-### Run with local Chrome instance (programmatically)
-```python
-import asyncio
-from index import Agent, AnthropicProvider, BrowserConfig
-
-async def main():
-    # Configure browser to connect to a local Chrome instance
-    browser_config = BrowserConfig(
-        cdp_url="http://localhost:9222"
-    )
-    
-    llm = AnthropicProvider(model="claude-3-7-sonnet-20250219", enable_thinking=True, thinking_token_budget=2048)
-    
-    agent = Agent(llm=llm, browser_config=browser_config)
-    
-    output = await agent.run(
-        prompt="Navigate to news.ycombinator.com and find the top story"
-    )
-    
-    print(output.result)
-    
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-### Customize browser window size
-```python
-import asyncio
-from index import Agent, AnthropicProvider, BrowserConfig
-
-async def main():
-    # Configure browser with custom viewport size
-    browser_config = BrowserConfig(
-        viewport_size={"width": 1200, "height": 900}
-    )
-    
-    llm = AnthropicProvider(model="claude-3-7-sonnet-20250219")
-    
-    agent = Agent(llm=llm, browser_config=browser_config)
-    
-    output = await agent.run(
-        "Navigate to a responsive website and capture how it looks in full HD resolution"
-    )
-    
-    print(output.result)
-    
-if __name__ == "__main__":
-    asyncio.run(main())
-```
 
 ---
 

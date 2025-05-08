@@ -406,7 +406,7 @@ class Browser:
 
 		return interactive_elements_data
 
-	@observe(name='browser.get_interactive_elements', ignore_output=True)
+	@observe(name='browser.get_interactive_elements', ignore_inputs=["screenshot_b64"])
 	async def get_interactive_elements(self, screenshot_b64: str, detect_sheets: bool = False) -> InteractiveElementsData:
 		"""
 		Get interactive elements using combined browser and CV detection.

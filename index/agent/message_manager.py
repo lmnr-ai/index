@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Type
+
+from pydantic import BaseModel
 
 from index.agent.models import ActionResult, AgentLLMOutput
 from index.agent.prompts import system_message
-from index.agent.utils import load_demo_image_as_b64
+from index.agent.utils import load_demo_image_as_b64, pydantic_to_custom_jtd
 from index.browser.models import BrowserState
 from index.browser.utils import scale_b64_image
 from index.llm.llm import ImageContent, Message, TextContent
@@ -23,7 +26,7 @@ class MessageManager:
 		self.action_descriptions = action_descriptions
 
 
-	def add_system_message_and_user_prompt(self, prompt: str) -> None:
+	def add_system_message_and_user_prompt(self, prompt: str, output_model: Type[BaseModel] | str | None = None) -> None:
 
 		complex_layout_highlight = load_demo_image_as_b64('complex_layout_highlight.png')
 		complex_layout_small_elements = load_demo_image_as_b64('complex_layout_small_elements.png')
@@ -38,6 +41,22 @@ class MessageManager:
 		)
 
 		self._messages.append(system_msg)
+		output_model_str = ''
+		if output_model:
+			output_format = ''
+			if isinstance(output_model, type) and issubclass(output_model, BaseModel):
+				output_format = json.dumps(pydantic_to_custom_jtd(output_model), indent=2)
+			elif isinstance(output_model, str):
+				output_format = output_model
+
+			output_model_str = f"""
+
+When you are ready to complete the task use `done_with_structured_output` action. Strictly provide output in the following JSON format and infer which fields best match the information you have gathered:
+
+<output_model>
+{output_format}
+</output_model>
+"""
 
 		self._messages.append(Message(
 			role="user",
@@ -59,9 +78,13 @@ class MessageManager:
 				TextContent(text="In some cases, to reveal more content, you need to scroll in scrollable areas of the webpage. Scrollable areas have VERTICAL scrollbars very clearly visible on their right side. In the screenshot below, you can clearly see a scrollbar on the right side of the list of search items. This indicates that the list is scrollable. To scroll over this area, you need to identify any element within the scrollable area and use its index with `scroll_down_over_element` action to scroll over it. In this example, approriate element is with index 15."),
 				ImageContent(image_b64=scroll_over_element_example),
 				TextContent(text='</scroll_over_element_example>', cache_control=True),
-				TextContent(text=f"""Here is the task you need to complete:\n\n<task>\n{prompt}\n</task>
+				TextContent(text=f"""Here is the task you need to complete:
 
-Today's date and time is: {datetime.now().strftime('%B %d, %Y, %I:%M%p')} - keep this date and time in mind when planning your actions."""),
+<task>
+{prompt}
+</task>
+
+Today's date and time is: {datetime.now().strftime('%B %d, %Y, %I:%M%p')} - keep this date and time in mind when planning your actions.{output_model_str}"""),
 			]
 		))
 
