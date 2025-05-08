@@ -15,9 +15,9 @@ Index is a state-of-the-art open-source browser agent that autonomously executes
     - [x] Gemini 2.5 Flash (really fast, cheap, and good for less complex tasks)
 - [x] `pip install lmnr-index` and use it in your project
 - [x] `index run` to run the agent in the interactive CLI
-- [x] Index is also available as a [serverless API.](https://docs.lmnr.ai/laminar-index/introduction)
+- [x] Index is also available as a [serverless API.](https://docs.lmnr.ai/index-agent/api/getting-started)
 - [x] You can also try out Index via [Chat UI](https://lmnr.ai/chat).
-- [x] Supports advanced [browser agent observability](https://docs.lmnr.ai/laminar-index/observability) powered by open-source platform [Laminar](https://github.com/lmnr-ai/lmnr).
+- [x] Supports advanced [browser agent observability](https://docs.lmnr.ai/index-agent/tracing) powered by open-source platform [Laminar](https://github.com/lmnr-ai/lmnr).
 
 prompt: go to ycombinator.com. summarize first 3 companies in the W25 batch and make new spreadsheet in google sheets.
 
@@ -157,7 +157,7 @@ from lmnr import Laminar
 Laminar.initialize(project_api_key="your_api_key")
 ```
 
-Then you will get full observability on the agent's actions synced with the browser session in the Laminar platform. Learn more about browser agent observability in the [documentation](https://docs.lmnr.ai/laminar-index/observability).
+Then you will get full observability on the agent's actions synced with the browser session in the Laminar platform. Learn more about browser agent observability in the [documentation](https://docs.lmnr.ai/index-agent/tracing).
 
 <picture>
     <img src="./static/traces.png" alt="Index observability" width="800"/>
