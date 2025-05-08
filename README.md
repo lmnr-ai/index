@@ -6,7 +6,7 @@
 
 # Index
 
-Index is the SOTA open-source browser agent for autonomously executing complex tasks on the web.
+Index is a state-of-the-art open-source browser agent that autonomously executes complex web tasks. It turns any website into an accessible API and can be seamlessly integrated with just a few lines of code.
 
 - [x] Powered by reasoning LLMs with vision capabilities.
     - [x] Gemini 2.5 Pro (really fast and accurate)
