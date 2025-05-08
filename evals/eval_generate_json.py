@@ -6,7 +6,6 @@ from lmnr import evaluate
 from index import AnthropicProvider
 from index.agent.utils import generate_proper_json
 
-# llm = GeminiProvider(model="gemini-2.5-pro-preview-03-25")
 llm = AnthropicProvider(model="claude-3-7-sonnet-20250219", enable_thinking=True, thinking_token_budget=1024)
     
 async def run_json_correction(data: Dict[str, Any]):
