@@ -3,6 +3,11 @@
 <a href="https://x.com/lmnrai">![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/lmnrai)</a>
 <a href="https://discord.gg/nNFUUDAKub"> ![Static Badge](https://img.shields.io/badge/Join_Discord-464646?&logo=discord&logoColor=5865F2) </a>
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./static/logo_dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="./static/logo_light.png">
+  <img alt="Laminar logo" src="./static/logo_light.png">
+</picture>
 
 # Index
 
