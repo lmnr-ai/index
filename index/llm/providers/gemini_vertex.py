@@ -30,7 +30,6 @@ class GeminiVertexProvider(BaseLLMProvider):
         messages: List[Message],
         temperature: float = 1.0,
         max_tokens: Optional[int] = None,
-        **kwargs
     ) -> LLMResponse:
         
         if len(messages) == 0:
