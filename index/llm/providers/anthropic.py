@@ -54,6 +54,8 @@ class AnthropicProvider(BaseLLMProvider):
         
         anthropic_api_messages = [msg.to_anthropic_format() for msg in conversation_messages_input]
         
+        # print(f"anthropic_api_messages: {anthropic_api_messages}")
+
         if self.enable_thinking:
 
             try:
