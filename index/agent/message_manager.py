@@ -31,7 +31,6 @@ class MessageManager:
 		complex_layout_highlight = load_demo_image_as_b64('complex_layout_highlight.png')
 		complex_layout_small_elements = load_demo_image_as_b64('complex_layout_small_elements.png')
 		still_loading = load_demo_image_as_b64('loading.png')
-		still_loading_2 = load_demo_image_as_b64('loading2.png')
 		scroll_over_element_example = load_demo_image_as_b64('scroll.png')
 		system_msg = Message(
 			role="system",
@@ -70,12 +69,11 @@ When you are ready to complete the task use `done_with_structured_output` action
 				ImageContent(image_b64=complex_layout_small_elements),
 				TextContent(text='</small_elements_example>'),
 				TextContent(text='<loading_pages_example>'),
-				TextContent(text="Here are some examples of loading pages. If the main content on the page is empty or if there are loading elements, such as skeleton screens, page is still loading. Then, you HAVE to perform `wait_for_page_to_load` action."),
+				TextContent(text="Here is an example of a loading page. If the main content on the page is empty or if there are loading elements, such as 'skeleton' screens or loading indicators, page is still loading. Then, you HAVE to perform `wait_for_page_to_load` action because you can't interact with the page until it is fully loaded."),
 				ImageContent(image_b64=still_loading),
-				ImageContent(image_b64=still_loading_2),
 				TextContent(text='</loading_pages_example>'),
 				TextContent(text='<scroll_over_element_example>'),
-				TextContent(text="In some cases, to reveal more content, you need to scroll in scrollable areas of the webpage. Scrollable areas have VERTICAL scrollbars very clearly visible on their right side. In the screenshot below, you can clearly see a scrollbar on the right side of the list of search items. This indicates that the list is scrollable. To scroll over this area, you need to identify any element within the scrollable area and use its index with `scroll_down_over_element` action to scroll over it. In this example, approriate element is with index 15."),
+				TextContent(text="In some cases, to reveal more content, you need to scroll in scrollable areas of the webpage. Scrollable areas have VERTICAL scrollbars very clearly visible on their right side. In the screenshot below, you can clearly see a scrollbar on the right side of the list of search items. This indicates that the list is scrollable. To scroll over this area, you need to identify any element within the scrollable area and use its index with `scroll_down_over_element` action to scroll over it. In this example, appropriate element is with index 15."),
 				ImageContent(image_b64=scroll_over_element_example),
 				TextContent(text='</scroll_over_element_example>', cache_control=True),
 				TextContent(text=f"""Here is the task you need to complete:
