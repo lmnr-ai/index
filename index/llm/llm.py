@@ -98,7 +98,8 @@ class Message:
 
             content_blocks = []
 
-            if self.role != "user":
+            # content of a system and assistant messages in groq can only contain text
+            if self.role == "system" or self.role == "assistant":
                 block = self.content[0]
                 if isinstance(block, TextContent):
                     message["content"] = block.text
