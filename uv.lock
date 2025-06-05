@@ -596,7 +596,7 @@ openai = [
 
 [[package]]
 name = "lmnr-index"
-version = "0.1.11"
+version = "0.1.13"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic", extra = ["bedrock"] },
@@ -606,6 +606,7 @@ dependencies = [
     { name = "groq" },
     { name = "lmnr", extra = ["anthropic", "groq", "openai"] },
     { name = "openai" },
+    { name = "patchright" },
     { name = "pillow" },
     { name = "playwright" },
     { name = "rich" },
@@ -629,6 +630,7 @@ requires-dist = [
     { name = "groq", specifier = ">=0.24.0" },
     { name = "lmnr", extras = ["anthropic", "openai", "groq"], specifier = ">=0.6.2" },
     { name = "openai", specifier = ">=1.65.2" },
+    { name = "patchright", specifier = ">=1.52.4" },
     { name = "pillow", specifier = ">=11.1.0" },
     { name = "playwright", specifier = ">=1.50.0" },
     { name = "rich", specifier = ">=13.5.0" },
@@ -894,6 +896,25 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a1/d4/1fc4078c65507b51b96ca8f8c3ba19e6a61c8253c72794544580a7b6c24d/packaging-25.0.tar.gz", hash = "sha256:d443872c98d677bf60f6a1f2f8c1cb748e8fe762d2bf9d3148b5599295b0fc4f", size = 165727 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/20/12/38679034af332785aac8774540895e234f4d07f7545804097de4b666afd8/packaging-25.0-py3-none-any.whl", hash = "sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484", size = 66469 },
+]
+
+[[package]]
+name = "patchright"
+version = "1.52.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "greenlet" },
+    { name = "pyee" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/21/c7/4687ac7d17cf523d6e3fe8f00cb450372f8024e2bfa6a0cbfe0cd3b37a08/patchright-1.52.4-py3-none-macosx_10_13_x86_64.whl", hash = "sha256:5b9f3156c36a896f2b4e5faa3d1a4cf1ebe3216a6b8d46fe8e0002724175bc63", size = 39592690 },
+    { url = "https://files.pythonhosted.org/packages/f5/46/7f142cdcc252bc8f60560810094874fc327fd08f78b3187382595dd1fecb/patchright-1.52.4-py3-none-macosx_11_0_arm64.whl", hash = "sha256:c8af8ccee89f0a0f7237ec43ab92aecd201d0616f14d0429775ce23538715197", size = 37944417 },
+    { url = "https://files.pythonhosted.org/packages/3c/82/618a815238f8b44e7f308c5fc0f482b99039cc2632088b5020a57387d94b/patchright-1.52.4-py3-none-macosx_11_0_universal2.whl", hash = "sha256:8c38c40b04fd4cc3706cd27f8594947b661dc008c4aaf3d42bdb36906fa41dc3", size = 39592690 },
+    { url = "https://files.pythonhosted.org/packages/12/c1/2b13231891c7cddb615eaeae7a5431498edd4f0c03fa5ce820098cbbadbc/patchright-1.52.4-py3-none-manylinux1_x86_64.whl", hash = "sha256:c730869591bed5b88d11dac6e0ec1f2e58b737e630091af0c78528a6e4403bcb", size = 45122777 },
+    { url = "https://files.pythonhosted.org/packages/35/0f/6b1cf29f1ec8b80e93bfcd8e8e4d4e10264f57348cddaebc766a3d4be280/patchright-1.52.4-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6f7b15b47440795d41fefc2cd436ebc255909cafc56f959d988ce7b88afc34ad", size = 44522068 },
+    { url = "https://files.pythonhosted.org/packages/4c/0e/47e06a7249947a058024e2d3dc50866b3a52bffb9b0588fcbbf41068ecdc/patchright-1.52.4-py3-none-win32.whl", hash = "sha256:a3d05b3d54fa8aae978a392d5dccb821f8baefe08b18d1be53231a4d37f82a5c", size = 34820599 },
+    { url = "https://files.pythonhosted.org/packages/35/8e/48542be773070720add55dcbdb932c8b6be856ff35503266c0c7a14b473c/patchright-1.52.4-py3-none-win_amd64.whl", hash = "sha256:a3df47f6048d9f4cd618d69a24fe01b26c6fcbad71fd5fc4b5f317e71d995fbb", size = 34820606 },
+    { url = "https://files.pythonhosted.org/packages/cc/1c/2edb5442eb290bd77585ef682c4196cceedf2f21a41a344f96b123a363cf/patchright-1.52.4-py3-none-win_arm64.whl", hash = "sha256:e1cd99b6424dad129db083e676013f394a2446f5a8f48c43aaa3a32e1b3b9773", size = 30670414 },
 ]
 
 [[package]]

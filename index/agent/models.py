@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Literal, Optional
 
-from playwright.async_api import StorageState
+from patchright.async_api import StorageState
 from pydantic import BaseModel
 
 from index.llm.llm import Message, ThinkingBlock

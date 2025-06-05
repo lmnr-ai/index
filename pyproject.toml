@@ -29,6 +29,7 @@ dependencies = [
     "google-genai>=1.11.0",
     "docstring-parser>=0.16",
     "groq>=0.24.0",
+    "patchright>=1.52.4",
 ]
 
 [project.scripts]

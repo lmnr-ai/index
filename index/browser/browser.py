@@ -11,19 +11,19 @@ from importlib import resources
 from typing import Any, Optional
 
 from lmnr import observe
-from PIL import Image
-from playwright.async_api import (
+from patchright.async_api import (
 	Browser as PlaywrightBrowser,
 )
-from playwright.async_api import (
+from patchright.async_api import (
 	BrowserContext as PlaywrightBrowserContext,
 )
-from playwright.async_api import (
+from patchright.async_api import (
 	Page,
 	Playwright,
 	StorageState,
 	async_playwright,
 )
+from PIL import Image
 from tenacity import (
 	retry,
 	retry_if_exception_type,
