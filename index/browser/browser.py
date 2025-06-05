@@ -307,7 +307,7 @@ class Browser:
 		self.current_page = page
 
 		await page.bring_to_front()
-		await page.wait_for_load_state()
+		await page.wait_for_load_state('domcontentloaded')
 
 	async def create_new_tab(self, url: str | None = None) -> None:
 		"""Create a new tab and optionally navigate to a URL"""
@@ -317,7 +317,7 @@ class Browser:
 		new_page = await self.context.new_page()
 		self.current_page = new_page
 
-		await new_page.wait_for_load_state()
+		await new_page.wait_for_load_state('domcontentloaded')
 
 		if url:
 			await new_page.goto(url, wait_until='domcontentloaded')
