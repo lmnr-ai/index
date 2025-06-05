@@ -87,7 +87,7 @@ class Controller:
                     'params': params,
                 },
                 span_type='TOOL',
-            ):
+            ) as span:
                 
                 logger.info(f'Executing action: {action_name} with params: {params}')
                 action = self._actions.get(action_name)
@@ -107,9 +107,11 @@ class Controller:
 
                     Laminar.set_span_output(result)
                     return result
-
                 except Exception as e:
-                    raise RuntimeError(f'Error executing action {action_name}: {str(e)}') from e
+                    logger.error(f'Error executing action {action_name}: {str(e)}')
+                    span.record_exception(e)
+            
+                    return ActionResult(error=str(e))
 
         else:
             raise ValueError('Params are not provided for action: {action_name}')
