@@ -6,7 +6,7 @@ import backoff
 from anthropic import AsyncAnthropicBedrock
 from dotenv import load_dotenv
 
-from ..llm import BaseLLMProvider, LLMResponse, Message
+from ..llm import BaseLLMProvider, LLMResponse, Message, ToolCall, ToolDefinition
 
 load_dotenv()
 
@@ -35,6 +35,7 @@ class AnthropicBedrockProvider(BaseLLMProvider):
         messages: List[Message],
         temperature: float = 1,
         max_tokens: Optional[int] = 2048,
+        tools: Optional[List[ToolDefinition]] = None,
         **kwargs
     ) -> LLMResponse:
     
@@ -45,43 +46,80 @@ class AnthropicBedrockProvider(BaseLLMProvider):
             
         system_message = messages_copy[0]
 
+        # Convert tools to Anthropic format
+        anthropic_tools = None
+        if tools:
+            anthropic_tools = [tool.to_anthropic_format() for tool in tools]
+
         try:
             if self.enable_thinking:
-                    
-                response = await self.client.messages.create(
-                    model=self.model,
-                    system=system_message.to_anthropic_format(enable_cache_control=False)["content"],
-                    messages=[msg.to_anthropic_format(enable_cache_control=False) for msg in messages_copy[1:]],
-                    temperature=1,
-                    thinking={
+                call_params = {
+                    "model": self.model,
+                    "system": system_message.to_anthropic_format(enable_cache_control=False)["content"],
+                    "messages": [msg.to_anthropic_format(enable_cache_control=False) for msg in messages_copy[1:]],
+                    "temperature": 1,
+                    "thinking": {
                         "type": "enabled",
                         "budget_tokens": self.thinking_token_budget,
                     },
-                    max_tokens=max(self.thinking_token_budget + 1, max_tokens),
+                    "max_tokens": max(self.thinking_token_budget + 1, max_tokens),
                     **kwargs
-                )
+                }
+                
+                if anthropic_tools:
+                    call_params["tools"] = anthropic_tools
+                    
+                response = await self.client.messages.create(**call_params)
+               
+                # Parse tool calls from response
+                tool_calls = self._extract_tool_calls(response)
                
                 return LLMResponse(
-                    content=response.content[1].text,
+                    content=response.content[1].text if len(response.content) > 1 else "",
                     raw_response=response,
-                    usage=response.usage
+                    usage=response.usage,
+                    tool_calls=tool_calls
                 )
             else:
-
-                response = await self.client.messages.create(
-                    model=self.model,
-                    messages=[msg.to_anthropic_format(enable_cache_control=False) for msg in messages_copy[1:]],
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    system=system_message.to_anthropic_format(enable_cache_control=False)["content"],
+                call_params = {
+                    "model": self.model,
+                    "messages": [msg.to_anthropic_format(enable_cache_control=False) for msg in messages_copy[1:]],
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                    "system": system_message.to_anthropic_format(enable_cache_control=False)["content"],
                     **kwargs
-                )
+                }
+                
+                if anthropic_tools:
+                    call_params["tools"] = anthropic_tools
+
+                response = await self.client.messages.create(**call_params)
+                
+                # Parse tool calls from response
+                tool_calls = self._extract_tool_calls(response)
               
                 return LLMResponse(
-                    content=response.content[0].text,
+                    content=response.content[0].text if response.content and hasattr(response.content[0], 'text') else "",
                     raw_response=response,
-                    usage=response.usage
+                    usage=response.usage,
+                    tool_calls=tool_calls
                 )
         except Exception as e:
             logger.error(f"Error calling Anthropic Bedrock: {str(e)}")
             raise e
+
+    def _extract_tool_calls(self, response) -> Optional[List[ToolCall]]:
+        """Extract tool calls from Anthropic response"""
+        if not response.content:
+            return None
+            
+        tool_calls = []
+        for content_block in response.content:
+            if hasattr(content_block, 'type') and content_block.type == 'tool_use':
+                tool_calls.append(ToolCall(
+                    id=content_block.id,
+                    name=content_block.name,
+                    parameters=content_block.input
+                ))
+        
+        return tool_calls if tool_calls else None

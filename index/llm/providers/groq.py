@@ -1,10 +1,11 @@
+import json
 import logging
 from typing import List, Optional
 
 import backoff
 from groq import AsyncGroq  # Assuming AsyncGroq for asynchronous operations
 
-from ..llm import BaseLLMProvider, LLMResponse, Message
+from ..llm import BaseLLMProvider, LLMResponse, Message, ToolCall, ToolDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,8 @@ class GroqProvider(BaseLLMProvider):
         messages: List[Message],
         temperature: float = 1.0,
         max_tokens: Optional[int] = None,
+        tools: Optional[List[ToolDefinition]] = None,
+        **kwargs
     ) -> LLMResponse:
         """
         Makes an asynchronous call to the Groq API.
@@ -46,6 +49,7 @@ class GroqProvider(BaseLLMProvider):
             temperature: The sampling temperature to use. Groq converts 0 to 1e-8.
                          Values should ideally be > 0 and <= 2.
             max_tokens: The maximum number of tokens to generate.
+            tools: Optional list of tool definitions for function calling.
 
         Returns:
             An LLMResponse object containing the model's response and usage data.
@@ -74,6 +78,10 @@ class GroqProvider(BaseLLMProvider):
         if max_tokens is not None:
             api_params["max_tokens"] = max_tokens
 
+        # Convert tools to OpenAI format (since Groq is OpenAI-compatible)
+        if tools:
+            api_params["tools"] = [tool.to_openai_format() for tool in tools]
+
         # Groq API notes:
         # - 'N' (number of choices) must be 1 if supplied. Defaults to 1.
         # - Unsupported OpenAI fields (will result in 400 error if supplied):
@@ -85,10 +93,29 @@ class GroqProvider(BaseLLMProvider):
             logger.error(f"Groq API response missing choices or message: {response}")
             raise ValueError("Invalid response structure from Groq API")
 
-        content = response.choices[0].message.content
-        # Handle cases where content might be None (e.g., if finish_reason indicates tool use in the future)
+        message = response.choices[0].message
+        content = message.content
+        # Handle cases where content might be None (e.g., if finish_reason indicates tool use in the future)  
         if content is None:
             content = ""
+
+        # Extract tool calls if present
+        tool_calls = None
+        if hasattr(message, 'tool_calls') and message.tool_calls:
+            tool_calls = []
+            for tool_call in message.tool_calls:
+                try:
+                    # Parse the arguments JSON string
+                    parameters = json.loads(tool_call.function.arguments) if tool_call.function.arguments else {}
+                except json.JSONDecodeError:
+                    logger.warning(f"Failed to parse tool call arguments: {tool_call.function.arguments}")
+                    parameters = {}
+                
+                tool_calls.append(ToolCall(
+                    id=tool_call.id,
+                    name=tool_call.function.name,
+                    parameters=parameters
+                ))
 
         usage_data = {}
         # Attempt to extract usage data, assuming an OpenAI-compatible structure.
@@ -103,5 +130,6 @@ class GroqProvider(BaseLLMProvider):
         return LLMResponse(
             content=content,
             raw_response=response,
-            usage=usage_data
+            usage=usage_data,
+            tool_calls=tool_calls
         ) 

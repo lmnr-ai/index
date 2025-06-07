@@ -12,7 +12,7 @@ from index.agent.prompts import system_message
 from index.agent.utils import load_demo_image_as_b64, pydantic_to_custom_jtd
 from index.browser.models import BrowserState
 from index.browser.utils import scale_b64_image
-from index.llm.llm import ImageContent, Message, TextContent
+from index.llm.llm import ImageContent, Message, TextContent, ToolCall, ToolResult
 
 logger = logging.getLogger(__name__)
 
@@ -178,14 +178,14 @@ Current viewport information:
 		self._messages.append(state_msg)
 
 	def add_message_from_model_output(self, step: int, previous_result: ActionResult | None, model_output: AgentLLMOutput, screenshot: Optional[str] = None) -> None:
-		"""Add model output as AI message"""
+		"""Add model output using tool calling workflow instead of JSON"""
 
-		previous_action_output = ''
-
+		# Clean up state messages to avoid duplication
 		for msg in self._messages:
 			if msg.is_state_message:
 				msg.content = [msg.content[0]]
 
+		# Add state information from previous step if available
 		if previous_result and screenshot:
 			previous_action_output = f'<action_output_{step-1}>\n{previous_result.content}\n</action_output_{step-1}>' if previous_result.content else ''
 
@@ -204,23 +204,73 @@ Current viewport information:
 			)
 			self._messages.append(usr_msg)
 
-		assistant_content = [
-			TextContent(text=f"""<output_{step}>
-{model_output.model_dump_json(indent=2, include={"thought", "action", "summary"}).strip()}
-</output_{step}>"""),
-			]
-		
-		if model_output.thinking_block:
-			assistant_content = [
-				model_output.thinking_block,
-			] + assistant_content
-		
-		msg = Message(
-			role='assistant',
-			content=assistant_content,
+		# Create tool call for the action we're about to execute
+		tool_call = ToolCall(
+			id=f"call_{step}_{model_output.action.name}",
+			name=model_output.action.name,
+			parameters=model_output.action.params
 		)
 
-		self._messages.append(msg)
+		# Create assistant message with reasoning and tool call
+		assistant_content = []
+		
+		if model_output.thinking_block:
+			assistant_content.append(model_output.thinking_block)
+		
+		# Add reasoning text content
+		reasoning_text = ""
+		if model_output.thought:
+			reasoning_text += f"Thought: {model_output.thought}\n"
+		if model_output.summary:
+			reasoning_text += f"Summary: {model_output.summary}\n"
+		
+		if reasoning_text:
+			assistant_content.append(TextContent(text=reasoning_text.strip()))
+		
+		assistant_msg = Message(
+			role='assistant',
+			content=assistant_content if assistant_content else [TextContent(text="Executing action...")],
+			tool_calls=[tool_call]
+		)
+
+		self._messages.append(assistant_msg)
+		
+		# Store the tool call ID for later use when adding the result
+		self._pending_tool_call_id = tool_call.id
+
+	def add_action_result(self, action_result: ActionResult) -> None:
+		"""Add the result of the executed action as a tool result message"""
+		if not hasattr(self, '_pending_tool_call_id'):
+			logger.warning("No pending tool call ID found when adding action result")
+			return
+			
+		# Create tool result content
+		result_content = ""
+		if action_result.content:
+			result_content += str(action_result.content)
+		if action_result.error:
+			result_content += f"\nError: {action_result.error}"
+		if not result_content:
+			result_content = "Action completed"
+		
+		# Create ToolResult object
+		tool_result = ToolResult(
+			tool_call_id=self._pending_tool_call_id,
+			content=result_content,
+			is_error=bool(action_result.error)
+		)
+		
+		# Create tool result message (use "tool" role - providers will convert as needed)
+		tool_result_msg = Message(
+			role='tool',
+			content=[TextContent(text=result_content)],
+			tool_result=tool_result
+		)
+
+		self._messages.append(tool_result_msg)
+		
+		# Clean up the pending tool call ID
+		del self._pending_tool_call_id
 
 	def get_messages(self) -> List[Message]:
 

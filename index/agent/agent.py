@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 import uuid
 from typing import AsyncGenerator, Optional
@@ -11,6 +12,7 @@ from pydantic import BaseModel
 
 from index.agent.message_manager import MessageManager
 from index.agent.models import (
+	ActionModel,
 	ActionResult,
 	AgentLLMOutput,
 	AgentOutput,
@@ -23,7 +25,6 @@ from index.agent.models import (
 	TimeoutChunk,
 	TimeoutChunkContent,
 )
-from index.agent.utils import validate_json
 from index.browser.browser import Browser, BrowserConfig
 from index.controller.controller import Controller
 from index.llm.llm import BaseLLMProvider, Message
@@ -43,15 +44,26 @@ class Agent:
 		# Initialize browser or use the provided one
 		self.browser = Browser(config=browser_config if browser_config is not None else BrowserConfig())
 		
-		action_descriptions = self.controller.get_action_descriptions()
+		# Detect if this is a thinking model and get appropriate tool definitions
+		include_thought = not self._is_thinking_model()
+		self.tool_definitions = self.controller.get_tool_definitions(include_thought=include_thought)
 
 		self.message_manager = MessageManager(
-			action_descriptions=action_descriptions,
+			action_descriptions=self.controller.get_action_descriptions(),  # Keep for backwards compatibility with message manager
 		)
 
 		self.state = AgentState(
 			messages=[],
 		)
+
+	def _is_thinking_model(self) -> bool:
+		"""Detect if the LLM is a thinking model (e.g., Anthropic with thinking enabled)"""
+		# Check if it's an Anthropic provider with thinking enabled
+		if hasattr(self.llm, 'enable_thinking'):
+			return getattr(self.llm, 'enable_thinking', False)
+		
+		# For providers without thinking capability, always return False
+		return False
 
 	async def step(self, step: int, previous_result: ActionResult | None = None, step_span_context: Optional[LaminarSpanContext] = None) -> tuple[ActionResult, str]:
 		"""Execute one step of the task"""
@@ -88,6 +100,9 @@ class Agent:
 					model_output.action,
 					self.browser
 				)
+				
+				# Add the action result as a tool result message
+				self.message_manager.add_action_result(result)
 
 				if result.is_done:
 					logger.info(f'Result: {result.content}')
@@ -101,26 +116,107 @@ class Agent:
 
 	@observe(name='agent.generate_action', ignore_input=True)
 	async def _generate_action(self, input_messages: list[Message]) -> AgentLLMOutput:
-		"""Get next action from LLM based on current state"""
+		"""Get next action from LLM using tool calls instead of JSON parsing"""
 
-		response = await self.llm.call(input_messages)
+		response = await self.llm.call(input_messages, tools=self.tool_definitions)
 		
-		try:
-			# Pass the raw LLM response content to validate_json
-			output = await validate_json(response.content, self.llm)
-			
-			logger.info(f'💡 Thought: {output.thought}')
-			logger.info(f'💡 Summary: {output.summary}')
-			logger.info(f'🛠️ Action: {output.action.model_dump_json(exclude_unset=True)}')
-			
-			if response.thinking:
-				output.thinking_block = response.thinking
+		if not response.tool_calls:
+			# If no tool calls, try to extract any reasoning from the text content
+			thought = self._extract_thought_from_content(response.content)
+			raise ValueError(f"LLM did not make any tool calls. Response content: {response.content}")
+		
+		# Find the action tool call (should be the main action)
+		action_tool_call = None
+		thought = ""
+		summary = ""
+		
+		for tool_call in response.tool_calls:
+			# All controller actions are the main tool calls
+			if tool_call.name in [tool.name for tool in self.tool_definitions]:
+				action_tool_call = tool_call
+				break
+		
+		if not action_tool_call:
+			raise ValueError(f"No valid action tool call found in response. Tool calls: {[tc.name for tc in response.tool_calls]}")
+		
+		# Extract thought and summary from the response content or parameters
+		thought, summary = self._extract_thought_and_summary(response.content, action_tool_call.parameters)
+		
+		# Create the action model
+		action = ActionModel(
+			name=action_tool_call.name,
+			params=action_tool_call.parameters
+		)
+		
+		# Create AgentLLMOutput
+		output = AgentLLMOutput(
+			action=action,
+			thought=thought,
+			summary=summary
+		)
+		
+		if response.thinking:
+			output.thinking_block = response.thinking
+		
+		logger.info(f'💡 Thought: {output.thought}')
+		logger.info(f'💡 Summary: {output.summary}')
+		logger.info(f'🛠️ Action: {output.action.model_dump_json(exclude_unset=True)}')
+		
+		return output
 
-			return output
-		except ValueError as e:
-			# Re-raise the ValueError from validate_json, which now includes detailed context
-			logger.error(f"Failed to generate and validate action after multiple retries: {e}")
-			raise e
+	def _extract_thought_from_content(self, content: str) -> str:
+		"""Extract reasoning/thought from LLM content when no tool calls are made"""
+		if not content:
+			return "No reasoning provided"
+		# Take first 200 chars as thought
+		return content.strip()[:200] + ("..." if len(content.strip()) > 200 else "")
+
+	def _extract_thought_and_summary(self, content: str, tool_params: dict) -> tuple[str, str]:
+		"""Extract thought and summary from tool parameters (with fallbacks)"""
+		
+		# First priority: get from tool parameters (should be present for all tools now)
+		summary = tool_params.get('summary', '')
+		thought = tool_params.get('thought', '')
+		
+		# If summary is missing (shouldn't happen), try to extract from content or generate
+		if not summary:
+			summary_match = re.search(r'(?:summary|action):\s*(.+?)(?:\n|$)', content, re.IGNORECASE)
+			if summary_match:
+				summary = summary_match.group(1).strip()
+			else:
+				# Generate summary from action name and key parameters
+				action_name = tool_params.get('name', 'action')
+				summary = f"Executing {action_name}"
+				
+				# Add key parameter info to summary
+				key_params = ['url', 'text', 'query', 'element_index', 'xpath']
+				param_info = []
+				for key in key_params:
+					if key in tool_params and tool_params[key]:
+						value = str(tool_params[key])
+						if len(value) > 50:
+							value = value[:47] + "..."
+						param_info.append(f"{key}={value}")
+				
+				if param_info:
+					summary += f" ({', '.join(param_info[:2])})"  # Limit to 2 params to keep summary short
+		
+		# If thought is missing (for non-thinking models), try to extract from content or generate
+		if not thought:
+			thought_match = re.search(r'(?:thought|thinking|reasoning):\s*(.+?)(?:\n|$)', content, re.IGNORECASE)
+			if thought_match:
+				thought = thought_match.group(1).strip()
+			elif content:
+				# Use content as thought, truncated
+				thought = content.strip()[:200] + ("..." if len(content.strip()) > 200 else "")
+			else:
+				# For thinking models, we don't need thought since it's in the thinking block
+				if self._is_thinking_model():
+					thought = ""
+				else:
+					thought = "Processing next step"
+		
+		return thought or "", summary or "Continuing task"
 
 	async def _setup_messages(self, 
 							prompt: str, 

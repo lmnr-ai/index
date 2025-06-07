@@ -10,7 +10,7 @@ class MessageRole(Enum):
     SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
-    TOOL = "tool"  # For OpenAI function calling responses
+    TOOL = "tool"
 
 @dataclass
 class MessageContent:
@@ -38,6 +38,125 @@ class ThinkingBlock(MessageContent):
     type: str = "thinking"
 
 @dataclass
+class ToolCallBlock(MessageContent):
+    """Tool call block in a message"""
+    tool_call_id: str = ""
+    type: str = "tool_call"
+
+@dataclass
+class ToolCall:
+    """Represents a tool call from the model"""
+    id: str
+    name: str
+    parameters: Dict[str, Any]
+
+@dataclass
+class ToolResult:
+    """Represents the result of a tool execution"""
+    tool_call_id: str
+    content: Any
+    is_error: bool = False
+
+@dataclass
+class ToolParameter:
+    """Represents a parameter in a tool definition"""
+    type: str
+    description: str
+    enum: Optional[List[str]] = None
+    required: bool = True
+
+@dataclass
+class ToolDefinition:
+    """Unified tool definition that can be converted to provider-specific formats"""
+    name: str
+    description: str
+    parameters: Dict[str, ToolParameter]
+
+    def to_openai_format(self) -> Dict[str, Any]:
+        """Convert to OpenAI tool format"""
+        properties = {}
+        required = []
+        
+        for param_name, param in self.parameters.items():
+            prop = {
+                "type": param.type,
+                "description": param.description
+            }
+            if param.enum:
+                prop["enum"] = param.enum
+            properties[param_name] = prop
+            
+            if param.required:
+                required.append(param_name)
+        
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": properties,
+                    "required": required
+                }
+            }
+        }
+    
+    def to_anthropic_format(self) -> Dict[str, Any]:
+        """Convert to Anthropic tool format"""
+        properties = {}
+        required = []
+        
+        for param_name, param in self.parameters.items():
+            prop = {
+                "type": param.type,
+                "description": param.description
+            }
+            if param.enum:
+                prop["enum"] = param.enum
+            properties[param_name] = prop
+            
+            if param.required:
+                required.append(param_name)
+        
+        return {
+            "name": self.name,
+            "description": self.description,
+            "input_schema": {
+                "type": "object",
+                "properties": properties,
+                "required": required
+            }
+        }
+    
+    def to_gemini_format(self) -> Dict[str, Any]:
+        """Convert to Gemini tool format"""
+        properties = {}
+        required = []
+        
+        for param_name, param in self.parameters.items():
+            prop = {
+                "type": param.type,
+                "description": param.description
+            }
+            if param.enum:
+                prop["enum"] = param.enum
+            properties[param_name] = prop
+            
+            if param.required:
+                required.append(param_name)
+        
+        return {
+            "name": self.name,
+            "description": self.description,
+            "parameters": {
+                "type": "object",
+                "properties": properties,
+                "required": required
+            }
+        }
+
+@dataclass
 class Message:
     """A message in a conversation"""
     role: Union[str, MessageRole]
@@ -45,6 +164,8 @@ class Message:
     name: Optional[str] = None  # For tool/function messages
     tool_call_id: Optional[str] = None  # For tool/function responses
     is_state_message: Optional[bool] = False
+    tool_calls: Optional[List[ToolCall]] = None  # For assistant messages with tool calls
+    tool_result: Optional[ToolResult] = None  # For user messages with tool results
 
     def __post_init__(self):
         # Convert role enum to string if needed
@@ -61,31 +182,54 @@ class Message:
         """Convert to OpenAI message format"""
         message = {"role": self.role}
         
-        if isinstance(self.content, str):
-            message["content"] = self.content
+        if self.tool_calls and self.role == "assistant":
+            # Assistant message with tool calls
+            if isinstance(self.content, list) and self.content:
+                message["content"] = self._format_content_for_openai()
+            else:
+                message["content"] = None
             
-        elif isinstance(self.content, list):
-
-            content_blocks = []
-
-            for content_block in self.content:
-
-                block = {}
-                
-                if isinstance(content_block, TextContent):
-                    block["type"] = "text"
-                    block["text"] = content_block.text
-                elif isinstance(content_block, ImageContent):
-                    block["type"] = "image_url"
-                    block["image_url"] = {
-                        "url": "data:image/png;base64," + content_block.image_b64
+            message["tool_calls"] = [
+                {
+                    "id": tool_call.id,
+                    "type": "function",
+                    "function": {
+                        "name": tool_call.name,
+                        "arguments": str(tool_call.parameters)
                     }
-
-                content_blocks.append(block)
-
-            message["content"] = content_blocks
+                }
+                for tool_call in self.tool_calls
+            ]
+        elif self.tool_result and self.role == "tool":
+            # Tool result message
+            message["tool_call_id"] = self.tool_result.tool_call_id
+            message["content"] = str(self.tool_result.content)
+        else:
+            # Regular message
+            if isinstance(self.content, str):
+                message["content"] = self.content
+            elif isinstance(self.content, list):
+                message["content"] = self._format_content_for_openai()
 
         return message
+    
+    def _format_content_for_openai(self) -> List[Dict]:
+        """Format content blocks for OpenAI"""
+        content_blocks = []
+        for content_block in self.content:
+            block = {}
+            
+            if isinstance(content_block, TextContent):
+                block["type"] = "text"
+                block["text"] = content_block.text
+            elif isinstance(content_block, ImageContent):
+                block["type"] = "image_url"
+                block["image_url"] = {
+                    "url": "data:image/png;base64," + content_block.image_b64
+                }
+
+            content_blocks.append(block)
+        return content_blocks
     
     def to_groq_format(self) -> Dict:
         """Convert to Groq message format"""
@@ -129,39 +273,71 @@ class Message:
         """Convert to Anthropic message format"""
         message = {"role": self.role}
 
-        if isinstance(self.content, str):
-            message["content"] = self.content
-            
-        elif isinstance(self.content, list):
-
+        if self.tool_calls and self.role == "assistant":
+            # Assistant message with tool calls
             content_blocks = []
-
-            for content_block in self.content:
-
-                block = {}
-
-
-                if isinstance(content_block, TextContent):
-                    block["type"] = "text"
-                    block["text"] = content_block.text
-                elif isinstance(content_block, ImageContent):
-                    block["type"] = "image"
-                    block["source"] = {
-                        "type": "base64",
-                        "media_type": "image/png",  # This should be configurable based on image type
-                        "data": content_block.image_b64 if content_block.image_b64 else content_block.image_url
-                    }
-                elif isinstance(content_block, ThinkingBlock):
-                    block["type"] = "thinking"
-                    block["thinking"] = content_block.thinking
-                    block["signature"] = content_block.signature
-
-                if content_block.cache_control and enable_cache_control:
-                    block["cache_control"] = {"type": "ephemeral"}
-
-                content_blocks.append(block)
-
+            
+            # Add text content if any
+            if isinstance(self.content, list):
+                for content_block in self.content:
+                    if isinstance(content_block, TextContent):
+                        block = {"type": "text", "text": content_block.text}
+                        if content_block.cache_control and enable_cache_control:
+                            block["cache_control"] = {"type": "ephemeral"}
+                        content_blocks.append(block)
+            
+            # Add tool use blocks
+            for tool_call in self.tool_calls:
+                content_blocks.append({
+                    "type": "tool_use",
+                    "id": tool_call.id,
+                    "name": tool_call.name,
+                    "input": tool_call.parameters
+                })
+            
             message["content"] = content_blocks
+        elif self.tool_result and self.role == "tool":
+            # Tool result message - convert to user role for Anthropic
+            message["role"] = "user"
+            message["content"] = [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": self.tool_result.tool_call_id,
+                    "content": str(self.tool_result.content),
+                    "is_error": self.tool_result.is_error
+                }
+            ]
+        else:
+            # Regular message
+            if isinstance(self.content, str):
+                message["content"] = self.content
+            elif isinstance(self.content, list):
+                content_blocks = []
+
+                for content_block in self.content:
+                    block = {}
+
+                    if isinstance(content_block, TextContent):
+                        block["type"] = "text"
+                        block["text"] = content_block.text
+                    elif isinstance(content_block, ImageContent):
+                        block["type"] = "image"
+                        block["source"] = {
+                            "type": "base64",
+                            "media_type": "image/png",  # This should be configurable based on image type
+                            "data": content_block.image_b64 if content_block.image_b64 else content_block.image_url
+                        }
+                    elif isinstance(content_block, ThinkingBlock):
+                        block["type"] = "thinking"
+                        block["thinking"] = content_block.thinking
+                        block["signature"] = content_block.signature
+
+                    if content_block.cache_control and enable_cache_control:
+                        block["cache_control"] = {"type": "ephemeral"}
+
+                    content_blocks.append(block)
+
+                message["content"] = content_blocks
                      
         return message
     
@@ -221,6 +397,7 @@ class LLMResponse(BaseModel):
     raw_response: Any
     usage: Dict[str, Any]
     thinking: Optional[ThinkingBlock] = None
+    tool_calls: Optional[List[ToolCall]] = None
 
 
 class BaseLLMProvider(ABC):
@@ -233,6 +410,7 @@ class BaseLLMProvider(ABC):
         messages: List[Message],
         temperature: float = 1,
         max_tokens: Optional[int] = None,
+        tools: Optional[List[ToolDefinition]] = None,
         **kwargs
     ) -> LLMResponse:
         pass

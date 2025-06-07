@@ -3,7 +3,7 @@ import json
 import logging
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Callable, Dict, get_type_hints
+from typing import Any, Callable, Dict, List, get_type_hints
 
 from docstring_parser import parse
 from lmnr import Laminar
@@ -11,6 +11,7 @@ from lmnr import Laminar
 from index.agent.models import ActionModel, ActionResult
 from index.browser.browser import Browser
 from index.controller.default_actions import register_default_actions
+from index.llm.llm import ToolDefinition, ToolParameter
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,10 @@ class Controller:
 
                     kwargs = params.copy() if params else {}
 
+                    # Filter out metadata fields that shouldn't be passed to action functions
+                    kwargs.pop('summary', None)
+                    kwargs.pop('thought', None)
+
                     # Add browser to kwargs if it's provided
                     if action.browser_context and browser is not None:
                         kwargs['browser'] = browser
@@ -117,7 +122,7 @@ class Controller:
             raise ValueError('Params are not provided for action: {action_name}')
 
     def get_action_descriptions(self) -> str:
-        """Return a dictionary of all registered actions and their metadata"""
+        """Return a dictionary of all registered actions and their metadata (deprecated)"""
         
         action_info = []
         
@@ -160,3 +165,90 @@ class Controller:
             }, indent=2))
         
         return '\n\n'.join(action_info)
+
+    def get_tool_definitions(self, include_thought: bool = True) -> List[ToolDefinition]:
+        """Return unified tool definitions for all registered actions
+        
+        Args:
+            include_thought: Whether to include a 'thought' field (False for thinking models)
+        """
+        tool_definitions = []
+        
+        for name, action in self._actions.items():
+            sig = inspect.signature(action.function)
+            type_hints = get_type_hints(action.function)
+            
+            # Extract parameter descriptions using docstring_parser
+            param_descriptions = {}
+            docstring = inspect.getdoc(action.function)
+            if docstring:
+                parsed_docstring = parse(docstring)
+                for param in parsed_docstring.params:
+                    param_descriptions[param.arg_name] = param.description
+            
+            # Build parameter definitions
+            parameters = {}
+            for param_name, param in sig.parameters.items():
+                if param_name == 'browser':  # Skip browser parameter
+                    continue
+                
+                # Convert Python type to JSON Schema type
+                param_type_hint = type_hints.get(param_name, Any)
+                json_type = self._python_type_to_json_type(param_type_hint)
+                
+                # Check if parameter is required (no default value)
+                required = param.default == inspect.Parameter.empty
+                
+                parameters[param_name] = ToolParameter(
+                    type=json_type,
+                    description=param_descriptions.get(param_name, f"Parameter {param_name}"),
+                    required=required
+                )
+            
+            # Always add summary field
+            parameters["summary"] = ToolParameter(
+                type="string",
+                description="Brief summary of what you are doing to display to the user",
+                required=True
+            )
+            
+            # Conditionally add thought field for non-thinking models
+            if include_thought:
+                parameters["thought"] = ToolParameter(
+                    type="string", 
+                    description="Your reasoning process and key points for this action",
+                    required=True
+                )
+            
+            # Use short description from docstring when available
+            description = action.description
+            if docstring:
+                parsed_docstring = parse(docstring)
+                if parsed_docstring.short_description:
+                    description = parsed_docstring.short_description
+            
+            tool_definitions.append(ToolDefinition(
+                name=name,
+                description=description,
+                parameters=parameters
+            ))
+        
+        return tool_definitions
+
+    def _python_type_to_json_type(self, python_type: type) -> str:
+        """Convert Python type to JSON Schema type"""
+        if python_type == str:
+            return "string"
+        elif python_type == int:
+            return "integer"
+        elif python_type == float:
+            return "number"
+        elif python_type == bool:
+            return "boolean"
+        elif python_type == list:
+            return "array"
+        elif python_type == dict:
+            return "object"
+        else:
+            # Default to string for unknown types
+            return "string"
