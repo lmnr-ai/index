@@ -15,7 +15,6 @@ from index.llm.llm import ToolDefinition, ToolParameter
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class Action:
     """Represents a registered action"""

@@ -48,6 +48,9 @@ class GeminiProvider(BaseLLMProvider):
             system = messages[0].content[0].text
             gemini_messages = [msg.to_gemini_format() for msg in messages[1:]]
 
+            for message in gemini_messages:
+                print(message["role"])
+
             config["system_instruction"] = {
                 "text": system
             }
@@ -56,8 +59,8 @@ class GeminiProvider(BaseLLMProvider):
         
         # Convert tools to Gemini format
         if tools:
-            function_declarations = [self._convert_tool_to_dict_format(tool) for tool in tools]
-            config["tools"] = [types.Tool(function_declarations=function_declarations)]
+            tools = [types.Tool(function_declarations=[self._convert_tool_to_dict_format(tool)]) for tool in tools]
+            config["tools"] = tools
         
         if max_tokens:
             config["max_output_tokens"] = max_tokens
@@ -79,6 +82,8 @@ class GeminiProvider(BaseLLMProvider):
         
         # Parse tool calls from response
         tool_calls = self._extract_tool_calls(response)
+        print(response.text)
+        print(response.candidates[0].content.parts[0].function_call)
         
         return LLMResponse(
             content=response.text if hasattr(response, 'text') else "",
@@ -87,7 +92,7 @@ class GeminiProvider(BaseLLMProvider):
             tool_calls=tool_calls
         )
 
-    def _extract_tool_calls(self, response) -> Optional[List[ToolCall]]:
+    def _extract_tool_calls(self, response: types.GenerateContentResponse) -> Optional[List[ToolCall]]:
         """Extract tool calls from Gemini response following official docs approach"""
         if not hasattr(response, 'candidates') or not response.candidates:
             return None
@@ -101,6 +106,7 @@ class GeminiProvider(BaseLLMProvider):
                 for j, part in enumerate(candidate.content.parts):
                     # Follow official docs: check for function_call attribute
                     if hasattr(part, 'function_call') and part.function_call is not None:
+                        print(part)
                         function_call = part.function_call
                         tool_call_id = f"call_{i}_{j}_{hash(str(function_call))}"
                         

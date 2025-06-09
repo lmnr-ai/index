@@ -158,7 +158,6 @@ class Agent:
 		if response.thinking:
 			output.thinking_block = response.thinking
 		
-		logger.info(f'💡 Thought: {output.thought}')
 		logger.info(f'💡 Summary: {output.summary}')
 		logger.info(f'🛠️ Action: {output.action.model_dump_json(exclude_unset=True)}')
 		

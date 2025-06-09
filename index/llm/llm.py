@@ -362,7 +362,7 @@ class Message:
                             "mime_type": "image/png",
                             "file_uri": content_block.image_url
                         }})
-        
+
         return {
             "role": 'model' if self.role == 'assistant' else 'user',
             "parts": parts
