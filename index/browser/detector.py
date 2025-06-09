@@ -7,7 +7,7 @@ import base64
 from importlib import resources
 from io import BytesIO
 import logging
-from tkinter import Image
+from PIL import Image
 from typing import List
 
 import requests
@@ -61,10 +61,6 @@ class OmniparserDetector(Detector):
             if resp.status_code == 200:
                 som_image_b64 = resp.json()["som_image_base64"]
                 content_list = resp.json()["parsed_content_list"]
-
-                data = base64.b64decode(som_image_b64)
-                with open(f"ocr.png", "wb") as fp:
-                    fp.write(data)
                 
                 image_data = base64.b64decode(image_b64)
                 image = Image.open(BytesIO(image_data))
@@ -117,7 +113,7 @@ class OmniparserDetector(Detector):
                     )
                     elements.append(elem)
             else:
-                logging.warn("Cannot Found elements")
+                logging.warning("Cannot Found elements")
         except Exception as e:
             logging.error(f"{e}")
 

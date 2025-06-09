@@ -161,7 +161,7 @@
 
         const element2 = frameDocument.elementFromPoint(x - rect.left, y - rect.top);
         
-        if (interactiveTags.includes(element2.tagName.toLowerCase())) {
+        if (element2 && interactiveTags.includes(element2.tagName.toLowerCase())) {
             return getElement(element2, {iframe: element, shadowHost: null});
         }
     }
