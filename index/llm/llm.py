@@ -86,6 +86,44 @@ class Message:
             message["content"] = content_blocks
 
         return message
+    
+    def to_groq_format(self) -> Dict:
+        """Convert to Groq message format"""
+        message = {"role": self.role}
+
+        if isinstance(self.content, str):
+            message["content"] = self.content
+            
+        elif isinstance(self.content, list):
+
+            content_blocks = []
+
+            # content of a system and assistant messages in groq can only contain text
+            if self.role == "system" or self.role == "assistant":
+                block = self.content[0]
+                if isinstance(block, TextContent):
+                    message["content"] = block.text
+
+                return message
+
+            for content_block in self.content:
+
+                block = {}
+                
+                if isinstance(content_block, TextContent):
+                    block["type"] = "text"
+                    block["text"] = content_block.text
+                elif isinstance(content_block, ImageContent):
+                    block["type"] = "image_url"
+                    block["image_url"] = {
+                        "url": "data:image/png;base64," + content_block.image_b64
+                    }
+
+                content_blocks.append(block)
+
+            message["content"] = content_blocks
+
+        return message
 
     def to_anthropic_format(self, enable_cache_control: bool = True) -> Dict:
         """Convert to Anthropic message format"""
@@ -181,7 +219,7 @@ class Message:
 class LLMResponse(BaseModel):
     content: str
     raw_response: Any
-    usage: Dict[str, int]
+    usage: Dict[str, Any]
     thinking: Optional[ThinkingBlock] = None
 
 

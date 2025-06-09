@@ -50,8 +50,8 @@ def register_default_actions(controller):
         Open google search in new tab and search for the query.
         """
         page = await browser.get_current_page()
-        await page.goto(f'https://www.google.com/search?q={query}&udm=14')
-        await page.wait_for_load_state()
+        await page.goto(f'https://www.google.com/search?q={query}&udm=14', wait_until='domcontentloaded')
+        await asyncio.sleep(1)
         msg = f"Searched for '{query}' in Google"
         logger.info(msg)
         return ActionResult(content=msg)
